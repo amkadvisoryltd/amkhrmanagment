@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AMK Advisory — HR Management</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050c1e;--surface:#0a1428;--card:#101d34;--card2:#152545;--border:#1b2e50;--accent:#e8a308;--adim:rgba(232,163,8,.12);--suc:#0d9488;--dan:#ef4444;--warn:#f59e0b;--info:#0ea5e9;--text:#e2e8f0;--muted:#6b7fa0}
+[data-theme="light"] {
+    --bg:#f1f5f9;--surface:#ffffff;--card:#e2e8f0;--card2:#cbd5e1;--border:#94a3b8;
+    --text:#0f172a;--muted:#475569;--accent:#d97706;--adim:rgba(217,119,6,0.1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;-webkit-tap-highlight-color:transparent;transition:background 0.3s, color 0.3s}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--surface)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.fd{font-family:'Playfair Display',serif}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:250px;background:var(--surface);border-right:1px solid var(--border);z-index:50;display:flex;flex-direction:column;transition:transform .3s}
+.main-content{margin-left:250px;min-height:100vh;transition:margin .3s}
+.nav-item{display:flex;align-items:center;gap:11px;padding:10px 18px;margin:2px 10px;border-radius:10px;cursor:pointer;color:var(--muted);transition:all .2s;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-item:hover{background:var(--adim);color:var(--text)}
+.nav-item.active{background:linear-gradient(135deg,rgba(232,163,8,.16),rgba(232,163,8,.04));color:var(--accent);font-weight:700}
+.nav-item i{width:18px;text-align:center;font-size:13px;flex-shrink:0}
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:50;padding:6px 0 env(safe-area-inset-bottom,6px);justify-content:space-around;align-items:center}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;cursor:pointer;color:var(--muted);transition:color .2s;font-size:9.5px;font-weight:600;flex:1;position:relative}
+.bnav-item.active{color:var(--accent)}
+.bnav-item i{font-size:16px;margin-bottom:1px}
+.bnav-badge{position:absolute;top:2px;right:calc(50% - 18px);background:var(--dan);color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:6px}
+.mobile-header{display:none;position:fixed;top:0;left:0;right:0;background:var(--surface);border-bottom:1px solid var(--border);z-index:40;padding:12px 16px;align-items:center;gap:10px}
+.mobile-header h2{font-size:16px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mobile-more-btn{width:36px;height:36px;border-radius:9px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text);font-size:14px;flex-shrink:0}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;transition:border .2s}
+.card:hover{border-color:rgba(232,163,8,.15)}
+.stat-card{position:relative;overflow:hidden}.stat-card::after{content:'';position:absolute;top:-20px;right:-20px;width:70px;height:70px;border-radius:50%;opacity:.06}
+.stat-card.c1::after{background:var(--accent)}.stat-card.c2::after{background:var(--suc)}.stat-card.c3::after{background:var(--dan)}.stat-card.c4::after{background:var(--info)}
+.btn{padding:8px 18px;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:6px;font-family:inherit;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#c98b06);color:#000}.btn-primary:hover{box-shadow:0 4px 18px rgba(232,163,8,.3)}
+.btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:rgba(239,68,68,.11);color:var(--dan);border:1px solid rgba(239,68,68,.16)}.btn-danger:hover{background:rgba(239,68,68,.2)}
+.btn-success{background:rgba(13,148,136,.11);color:var(--suc);border:1px solid rgba(13,148,136,.16)}.btn-success:hover{background:rgba(13,148,136,.2)}
+.btn-sm{padding:5px 11px;font-size:11px;border-radius:7px}
+.input{width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-family:inherit;transition:border .2s}
+.input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--adim)}.input::placeholder{color:var(--muted)}
+select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7fa0' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.label{font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:4px;display:block}
+.badge{padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;display:inline-block}
+.badge-pending{background:rgba(245,158,11,.13);color:var(--warn)}
+.badge-approved{background:rgba(13,148,136,.13);color:var(--suc)}
+.badge-rejected{background:rgba(239,68,68,.13);color:var(--dan)}
+.table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--card2);padding:10px 12px;text-align:left;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+tbody td{padding:10px 12px;font-size:12px;border-top:1px solid var(--border)}
+tbody tr:hover td{background:rgba(232,163,8,.02)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(5px);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;padding:16px}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;width:100%;max-width:520px;max-height:85vh;overflow-y:auto;transform:translateY(14px) scale(.97);transition:transform .2s}
+.modal-overlay.show .modal-box{transform:translateY(0) scale(1)}
+.toast-container{position:fixed;top:14px;right:14px;z-index:300;display:flex;flex-direction:column;gap:8px}
+.toast{padding:11px 16px;border-radius:10px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px;animation:toastIn .3s ease;min-width:240px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.toast-success{background:#064e3b;border:1px solid #0d9488;color:#a7f3d0}
+.toast-error{background:#7f1d1d;border:1px solid #ef4444;color:#fca5a5}
+.toast-warning{background:#78350f;border:1px solid #f59e0b;color:#fde68a}
+.toast-info{background:#0c4a6e;border:1px solid #0ea5e9;color:#bae6fd}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes toastOut{from{opacity:1}to{opacity:0;transform:translateX(30px)}}
+.sync-indicator{position:fixed;bottom:20px;left:270px;background:var(--card2);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px;z-index:30}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--suc);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.clock-widget{position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 14px;display:flex;flex-direction:column;align-items:flex-end;gap:2px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:45;transition:all 0.3s ease; cursor: grab;}
+.clock-widget:active { cursor: grabbing; }
+.clock-time{font-size:16px;font-weight:800;color:var(--accent);letter-spacing:1px;font-variant-numeric:tabular-nums}
+.clock-date{font-size:10px;color:var(--muted);font-weight:500}
+.clock-pos-tr { top: 12px; right: 12px; }
+.clock-pos-tl { top: 12px; left: 12px; align-items: flex-start; }
+.clock-pos-br { bottom: 80px; right: 12px; }
+.clock-pos-bl { bottom: 80px; left: 12px; align-items: flex-start; }
+.holiday-banner{background:linear-gradient(135deg,rgba(232,163,8,.08),rgba(239,68,68,.05));border:1px solid rgba(232,163,8,.2);border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.holiday-banner i{font-size:20px;color:var(--warn)}
+@media(max-width:1024px){.sidebar{transform:translateX(-260px)}.sidebar.open{transform:translateX(0)}.main-content{margin-left:0}}
+@media(max-width:768px){.sidebar{display:none!important}.bottom-nav{display:flex!important}.mobile-header{display:flex!important}.main-content{padding-bottom:70px!important}.page-inner{padding:60px 14px 24px!important}.card{padding:14px;border-radius:12px}.btn{padding:7px 14px;font-size:11.5px}.btn-sm{padding:4px 8px;font-size:10px}thead th,tbody td{padding:8px;font-size:10.5px}.modal-box{border-radius:14px;padding:18px;max-height:90vh}.modal-overlay{padding:10px;align-items:flex-end}.sync-indicator{bottom:80px;left:14px}.clock-widget{top:52px;right:10px;padding:6px 10px}.clock-time{font-size:13px}.clock-date{font-size:9px}}
+</style>
+</head>
+<body>
+<div id="rootEl"></div>
+<div class="toast-container" id="toastBox"></div>
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()"><div class="modal-box" id="modalBox"></div></div>
+
+<script>
+// === DEPLOYMENT CONFIGURATION ===
+var SB_URL = 'https://clafgzxjvuhyxkcolvvb.supabase.co'; // REPLACE WITH YOUR PROJECT URL
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsYWZnenhqdnVoeXhrY29sdnZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NjE5NTQsImV4cCI6MjA5MTUzNzk1NH0.CLA8e_28A7uyeFWsLOTm7t6-EbjEMd6lRbo9sC4XQ0A'; // REPLACE WITH YOUR ANON KEY
+
+var SB_HEADERS = {
+    'apikey': SB_KEY,
+    'Authorization': 'Bearer ' + SB_KEY,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+};
+
+var APP = {
+    currentUser:null, currentPage:'dashboard',
+    users:[], attendance:[], leaves:[], announcements:[], policies:[], requests:[], holidays:[],
+    config:{
+        companyName:'AMK Advisory', 
+        lateTime:'09:30', 
+        earlyTime:'18:30', 
+        workDays:['Sat','Sun','Mon','Tue','Wed','Thu','Fri'],
+        theme: 'dark', 
+        clockPos: 'br',
+        yearlyLeave: 14,
+        casualPerYear: 10,
+        sickPerYear: 10,
+        logo: null
+    },
+    isSyncing:false, lastSync:null, isOffline:false
+};
+
+var LAST_LOCATION = null;
+
+function fetchRemoteData(){
+    APP.isSyncing=true;updateSyncIndicator();
+    return fetch(SB_URL + '/rest/v1/hr_store?id=eq.1&select=payload', { method: 'GET', headers: SB_HEADERS })
+    .then(function(r){if(!r.ok)throw new Error("DB Connection Error: " + r.status);return r.json()})
+    .then(function(d){
+        if(!d || d.length === 0) {
+            console.error("No data found in hr_store table.");
+            return false;
+        }
+        var store = d[0].payload;
+        APP.users=store.users||[];APP.attendance=store.attendance||[];APP.leaves=store.leaves||[];
+        APP.announcements=store.announcements||[];APP.policies=store.policies||[];APP.requests=store.requests||[];
+        APP.holidays=store.holidays||[];
+        if(store.config)APP.config=Object.assign(APP.config, store.config);
+        APP.isSyncing=false;APP.isOffline=false;APP.lastSync=new Date();updateSyncIndicator();applyTheme();restoreSession();return true;
+    }).catch(function(e){showToast(e.message, 'error'); APP.isSyncing=false;APP.isOffline=true;updateSyncIndicator();applyTheme();restoreSession();return false});
+}
+function pushRemoteData(){
+    APP.isSyncing=true;updateSyncIndicator();
+    var p = {
+        payload: {
+            users:APP.users,attendance:APP.attendance,leaves:APP.leaves,announcements:APP.announcements,
+            policies:APP.policies,requests:APP.requests,holidays:APP.holidays,config:APP.config
+        },
+        updated_at: new Date().toISOString()
+    };
+    return fetch(SB_URL + '/rest/v1/hr_store?id=eq.1', { method: 'PATCH', headers: SB_HEADERS, body: JSON.stringify(p) })
+    .then(function(r){return r.ok}).then(function(ok){APP.isSyncing=false;APP.isOffline=!ok;APP.lastSync=new Date();updateSyncIndicator();return ok})
+    .catch(function(e){console.error(e);APP.isSyncing=false;APP.isOffline=true;updateSyncIndicator();return false});
+}
+function updateSyncIndicator(){var el=document.getElementById('syncIndicator');if(!el)return;if(APP.isSyncing){el.innerHTML='<i class="fas fa-spinner fa-spin" style="color:var(--warn)"></i> Syncing...';el.style.borderColor='var(--warn)'}else if(APP.isOffline){el.innerHTML='<i class="fas fa-exclamation-circle" style="color:var(--dan)"></i> Offline';el.style.borderColor='var(--dan)'}else{var t=APP.lastSync?APP.lastSync.toLocaleTimeString():'--:--';el.innerHTML='<span class="sync-dot"></span> Host DB — '+t;el.style.borderColor='var(--border)'}}
+function saveSession(){if(APP.currentUser)sessionStorage.setItem('amk_session',JSON.stringify(APP.currentUser))}
+function restoreSession(){try{var s=sessionStorage.getItem('amk_session');if(s)APP.currentUser=JSON.parse(s)}catch(e){}}
+function clearSession(){sessionStorage.removeItem('amk_session')}
+
+function genId(){return 'id_'+Date.now()+'_'+Math.random().toString(36).substr(2,5)}
+function getTodayStr(){return new Date().toISOString().split('T')[0]}
+function getNowTime(){var d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+function findUser(id){return APP.users.find(function(u){return u.id===id})}
+function renderLocationField(item){
+    var name = item.location || item.locationName || item.locationLink || '';
+    if(item.locationLink){
+        return '<a href="'+item.locationLink+'" target="_blank" style="color:var(--info);text-decoration:underline">'+(name||'View')+'</a>';
+    }
+    return name||'--';
+}
+function showUserOverview(userId){
+    var u=findUser(userId);if(!u){showToast('User not found','error');return}
+    var at=APP.attendance.filter(function(a){return a.userId===userId}).sort(function(a,b){return b.date.localeCompare(a.date)}).slice(0,12);
+    var lv=APP.leaves.filter(function(l){return l.userId===userId}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)}).slice(0,8);
+    var rq=APP.requests.filter(function(r){return r.userId===userId}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)}).slice(0,8);
+    var atRows = at.length?at.map(function(a){return '<tr><td>'+a.date+'</td><td>'+(a.loginTime||'--')+'</td><td>'+(a.logoutTime||'--')+'</td><td>'+(a.late?'<span class="badge badge-pending">Y</span>':'<span class="badge badge-approved">N</span>')+'</td><td>'+renderLocationField(a)+'</td></tr>'}).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:12px">No records</td></tr>';
+    var lvRows = lv.length?lv.map(function(l){return '<tr><td>'+l.fromDate+'</td><td>'+l.toDate+'</td><td>'+l.days+'</td><td>'+l.type+'</td><td><span class="badge badge-'+(l.status==='approved'?'approved':l.status==='rejected'?'rejected':'pending')+'">'+l.status+'</span></td></tr>'}).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:12px">No records</td></tr>';
+    var rqRows = rq.length?rq.map(function(r){return '<tr><td>'+r.date+'</td><td>'+r.time+'</td><td>'+r.type+'</td><td>'+ (r.status||'') +'</td><td>'+renderLocationField(r)+'</td></tr>'}).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:12px">No records</td></tr>';
+    var html = '<h3 style="font-size:17px;font-weight:800;margin-bottom:8px">'+u.name+'</h3><div style="font-size:12px;color:var(--muted);margin-bottom:12px">'+(u.email?u.email+' — ':'')+(u.department||'')+'</div>'+
+        '<div style="margin-bottom:12px"><h4 style="font-size:13px;margin-bottom:6px">Recent Attendance</h4><div class="table-wrap"><table style="width:100%"><thead><tr><th>Date</th><th>In</th><th>Out</th><th>Late</th><th>Location</th></tr></thead><tbody>'+atRows+'</tbody></table></div></div>'+
+        '<div style="margin-bottom:12px"><h4 style="font-size:13px;margin-bottom:6px">Recent Leaves</h4><div class="table-wrap"><table style="width:100%"><thead><tr><th>From</th><th>To</th><th>Days</th><th>Type</th><th>Status</th></tr></thead><tbody>'+lvRows+'</tbody></table></div></div>'+
+        '<div style="margin-bottom:6px"><h4 style="font-size:13px;margin-bottom:6px">Recent Requests</h4><div class="table-wrap"><table style="width:100%"><thead><tr><th>Date</th><th>Time</th><th>Type</th><th>Status</th><th>Location</th></tr></thead><tbody>'+rqRows+'</tbody></table></div></div>'+
+        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>';
+    openModal(html);
+}
+function isAdmin(){return APP.currentUser&&APP.currentUser.role==='admin'}
+function isHR(){return APP.currentUser&&APP.currentUser.role==='hr'}
+function isAdminOrHR(){return isAdmin()||isHR()}
+function isMobileView(){return window.innerWidth<=768}
+
+function applyTheme(){
+    document.body.setAttribute('data-theme', APP.config.theme);
+}
+
+function getBDTime(){
+    var d=new Date();
+    return d.toLocaleString('en-US',{timeZone:'Asia/Dhaka',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+}
+function getBDDate(){
+    var d=new Date();
+    return d.toLocaleString('en-US',{timeZone:'Asia/Dhaka',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+}
+function isTodayHoliday(){
+    var today=getTodayStr();
+    return APP.holidays.some(function(h){return h.date===today});
+}
+function getHolidayName(){
+    var today=getTodayStr();
+    var h=APP.holidays.find(function(h){return h.date===today});
+    return h?h.name:null;
+}
+
+function showToast(m,t){
+    t=t||'success';var ic={success:'fa-check-circle',error:'fa-times-circle',warning:'fa-exclamation-triangle',info:'fa-info-circle'};
+    var b=document.getElementById('toastBox'),e=document.createElement('div');e.className='toast toast-'+t;
+    e.innerHTML='<i class="fas '+(ic[t]||ic.info)+'"></i><span>'+m+'</span>';b.appendChild(e);
+    setTimeout(function(){e.style.animation='toastOut .3s ease forwards';setTimeout(function(){e.remove()},300)},3000);
+}
+function openModal(h){document.getElementById('modalBox').innerHTML=h;document.getElementById('modalOverlay').classList.add('show')}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('show')}
+
+function getLocationPlace(){
+    return new Promise(function(resolve){
+        if(!navigator.geolocation){resolve('Location unavailable');return}
+        navigator.geolocation.getCurrentPosition(
+            function(pos){
+                var lat=pos.coords.latitude,lon=pos.coords.longitude;
+                var lat4=lat.toFixed(4), lon4=lon.toFixed(4);
+                fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lon+'&zoom=16&addressdetails=1',{headers:{'User-Agent':'AMK-HR-App'}})
+                .then(function(r){if(!r.ok)throw new Error();return r.json()})
+                .then(function(data){
+                    if(data&&data.address){
+                        var a=data.address;
+                        var parts=[a.suburb||a.neighbourhood||a.quarter||'',a.city||a.town||a.village||''].filter(Boolean);
+                        var name = parts.join(', ')||data.display_name.split(',').slice(0,3).join(', ');
+                        LAST_LOCATION = {name:name,lat:lat,lon:lon,link:'https://www.openstreetmap.org/?mlat='+lat+'&mlon='+lon+'#map=18/'+lat+'/'+lon};
+                        resolve(name);
+                    }else{resolve(lat+', '+lon)}
+                }).catch(function(){resolve(lat+', '+lon)});
+            },
+            function(){resolve('Location denied')},
+            {timeout:12000,enableHighAccuracy:false}
+        );
+    });
+}
+
+function navigateTo(p){APP.currentPage=p;closeMobileMenu();renderApp()}
+function closeMobileMenu(){var s=document.querySelector('.sidebar');if(s)s.classList.remove('open');var m=document.getElementById('mobileMoreMenu');if(m)m.classList.add('hidden')}
+function toggleMobileMenu(){var m=document.getElementById('mobileMoreMenu');if(m)m.classList.toggle('hidden')}
+
+function renderApp(){
+    if(!APP.currentUser){renderLogin();return}
+    var mob=isMobileView(),pc=APP.requests.filter(function(r){return r.status==='pending'}).length;
+    var ni=getNavItems();
+    var sh=ni.map(function(n){var b=(n.key==='requests'&&pc)?'<span style="margin-left:auto;background:var(--dan);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px">'+pc+'</span>':'';return '<div class="nav-item '+(APP.currentPage===n.key?'active':'')+'" onclick="navigateTo(\''+n.key+'\')"><i class="fas '+n.icon+'"></i><span>'+n.label+'</span>'+b+'</div>'}).join('');
+    var bK=['dashboard','attendance','leave-app','requests'],bL=['Home','Attend.','Leave','Reqs'],bI=['fa-th-large','fa-clock','fa-calendar-alt','fa-hourglass-half'],bh='';
+    for(var i=0;i<bK.length;i++){var bb=(bK[i]==='requests'&&pc)?'<span class="bnav-badge">'+pc+'</span>':'';bh+='<div class="bnav-item '+(APP.currentPage===bK[i]?'active':'')+'" onclick="navigateTo(\''+bK[i]+'\')"><i class="fas '+bI[i]+'"></i><span>'+bL[i]+'</span>'+bb+'</div>'}
+    bh+='<div class="bnav-item" onclick="toggleMobileMenu()"><i class="fas fa-ellipsis-h"></i><span>More</span></div>';
+    var mi=ni.filter(function(n){return bK.indexOf(n.key)===-1});
+    var mh=mi.map(function(n){return '<div class="nav-item '+(APP.currentPage===n.key?'active':'')+'" onclick="navigateTo(\''+n.key+'\')" style="padding:12px 16px;margin:2px 8px"><i class="fas '+n.icon+'"></i><span>'+n.label+'</span></div>'}).join('');
+    var lo='<div class="nav-item" onclick="handleLogout()" style="margin:8px 10px;color:var(--dan)"><i class="fas fa-sign-out-alt"></i><span>Logout</span></div>';
+    var ini=APP.currentUser.name.split(' ').map(function(w){return w[0]}).join('').substr(0,2);
+    var hln=isTodayHoliday();
+    var hl=hln?'<div class="holiday-banner"><i class="fas fa-calendar-xmark"></i><div><span style="font-size:13px;font-weight:700;color:var(--warn)">'+getHolidayName()+'</span><span style="font-size:11px;color:var(--muted);margin-left:8px">— Holiday</span></div></div>':'';
+    var html='';
+    var companyLogoHtml = APP.config.logo?('<img src="'+APP.config.logo+'" style="width:38px;height:38px;border-radius:8px;object-fit:cover">'):'<div style="width:38px;height:38px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#c98b06);display:flex;align-items:center;justify-content:center;font-weight:900;color:#000;font-size:14px">AM</div>';
+    if(mob){
+        html+='<div class="mobile-header"><div style="width:32px;height:32px;border-radius:8px;overflow:hidden;flex-shrink:0">'+(APP.config.logo?'<img src="'+APP.config.logo+'" style="width:100%;height:100%;object-fit:cover">':'<div style="width:32px;height:32px;background:linear-gradient(135deg,var(--accent),#c98b06);display:flex;align-items:center;justify-content:center;font-weight:900;color:#000;font-size:12px">AM</div>')+'</div><h2>'+APP.config.companyName+'</h2><div class="mobile-more-btn" onclick="toggleMobileMenu()"><i class="fas fa-ellipsis-v"></i></div></div>';
+        html+='<div class="bottom-nav">'+bh+'</div>';
+        html+='<div id="mobileMoreMenu" class="hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:100;background:rgba(0,0,0,.5)" onclick="if(event.target===this)closeMobileMenu()"><div style="position:absolute;top:52px;right:10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;width:220px;max-height:70vh;overflow-y:auto;padding:8px 0;box-shadow:0 10px 40px rgba(0,0,0,.5)">'+mh+lo+'</div></div>';
+    }else{
+        html+='<aside class="sidebar"><div style="padding:20px 16px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:10px"><div style="width:38px;height:38px;border-radius:10px;overflow:hidden">'+companyLogoHtml+'</div><div><div style="font-weight:800;font-size:14px">'+APP.config.companyName+'</div><div style="font-size:10px;color:var(--muted)">HR Management</div></div></div></div><nav style="flex:1;overflow-y:auto;padding:6px 0">'+sh+'</nav><div style="padding:12px 16px;border-top:1px solid var(--border)"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:30px;height:30px;border-radius:7px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;font-size:11px">'+ini+'</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+APP.currentUser.name+'</div><div style="font-size:10px;color:var(--muted);text-transform:capitalize">'+APP.currentUser.role+'</div></div></div>'+lo+'</div></aside>';
+    }
+    var clockClass = 'clock-pos-' + APP.config.clockPos;
+    html+='<div class="clock-widget '+clockClass+'" id="clockWidget"><span class="clock-time" id="clockTime">--:--:--</span><span class="clock-date" id="clockDate">---</span></div>';
+    html+='<div class="sync-indicator" id="syncIndicator"><span class="sync-dot"></span> Connecting...</div>';
+    html+='<main class="main-content"><div class="page-inner" style="padding:'+(mob?'60px 14px 24px':'22px 26px 40px')+'">'+hl+renderPageContent()+'</div></main>';
+    document.getElementById('rootEl').innerHTML=html;updateSyncIndicator();startClock();initDrag();
+}
+
+function startClock(){
+    function tick(){var ct=document.getElementById('clockTime');var cd=document.getElementById('clockDate');if(ct)ct.textContent=getBDTime();if(cd)cd.textContent=getBDDate()}
+    tick();setInterval(tick,1000);
+}
+function initDrag() {
+    var el = document.getElementById('clockWidget');
+    if(!el) return;
+    // Only admin can drag/move the clock
+    if(!isAdmin()){ el.style.cursor='default'; return; }
+    var isDown = false, offset = [0,0];
+    el.addEventListener('mousedown', function(e) { isDown = true; offset = [el.offsetLeft - e.clientX, el.offsetTop - e.clientY]; });
+    document.addEventListener('mouseup', function() { if(isDown){ isDown = false; } });
+    document.addEventListener('mousemove', function(e) { if (isDown) { e.preventDefault(); el.style.left = (e.clientX + offset[0]) + 'px'; el.style.top = (e.clientY + offset[1]) + 'px'; } });
+}
+function getNavItems(){
+    var items=[{key:'dashboard',icon:'fa-th-large',label:'Dashboard'},{key:'attendance',icon:'fa-clock',label:'Attendance'}];
+    if(isAdminOrHR())items.push({key:'announcements',icon:'fa-bullhorn',label:'Announcements'});
+    if(isAdmin())items.push({key:'employees',icon:'fa-users-cog',label:'Employees'});
+    if(isAdmin())items.push({key:'holidays',icon:'fa-calendar-xmark',label:'Holidays'});
+    if(!isAdmin())items.push({key:'leave-app',icon:'fa-calendar-alt',label:'Leave Application'});
+    if(isAdminOrHR())items.push({key:'leave-mgmt',icon:'fa-calendar-check',label:'Leave Management'});
+    if(isAdminOrHR()) items.push({key:'requests',icon:'fa-hourglass-half',label:'Pending Requests'});
+    items.push({key:'policies',icon:'fa-file-contract',label:'Policies'});
+    if(isAdmin())items.push({key:'settings',icon:'fa-cog',label:'Settings'});
+    return items;
+}
+function renderPageContent(){var p={dashboard:renderDashboard,attendance:renderAttendance,announcements:renderAnnouncements,employees:renderEmployees,holidays:renderHolidays,'leave-app':renderLeaveApp,'leave-mgmt':renderLeaveMgmt,requests:renderRequests,policies:renderPolicies,settings:renderSettings};var fn=p[APP.currentPage];return fn?fn():renderDashboard()}
+
+/* ===== LOGIN ===== */
+function renderLogin(){
+    document.getElementById('rootEl').innerHTML='<div style="min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden"><div style="position:absolute;top:-160px;right:-160px;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(232,163,8,.04),transparent 70%)"></div><div style="position:absolute;bottom:-100px;left:-100px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(13,148,136,.03),transparent 70%)"></div><div style="width:100%;max-width:380px;position:relative;z-index:1"><div style="text-align:center;margin-bottom:28px"><div style="width:58px;height:58px;border-radius:14px;background:linear-gradient(135deg,var(--accent),#c98b06);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px"><span style="font-weight:900;font-size:22px;color:#000">AMK</span></div><h1 class="fd" style="font-size:28px;font-weight:900">'+APP.config.companyName+'</h1><p style="color:var(--muted);font-size:12.5px;margin-top:3px">Human Resource Management System</p></div><div class="card" style="padding:24px"><div style="margin-bottom:16px"><label class="label">Username</label><input class="input" id="loginUsername" placeholder="Enter your username" autocomplete="username" onkeydown="if(event.key===\'Enter\')document.getElementById(\'loginPassword\').focus()"></div><div style="margin-bottom:20px"><label class="label">Password</label><input class="input" id="loginPassword" type="password" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()"></div><button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px" onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Sign In</button></div><p style="text-align:center;margin-top:16px;font-size:10.5px;color:var(--muted)">Contact your administrator for login credentials</p></div></div>';
+    setTimeout(function(){var el=document.getElementById('loginUsername');if(el)el.focus()},100);
+}
+
+async function doLogin(){
+    var u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value.trim();
+    if(!u||!p){showToast('Enter username and password','warning');return}
+    var synced=await fetchRemoteData();
+    
+    if(APP.users.length===0){
+        showToast('Database is empty. Please run the SQL Repair script.','error');
+        return;
+    }
+
+    var user=APP.users.find(function(x){return x.username===u&&x.password===p});
+    if(!user){showToast('Invalid credentials','error');return}
+    if(user.status!=='active'){showToast('Account deactivated','error');return}
+    
+    APP.currentUser=user;APP.currentPage='dashboard';
+    if(!user.location){showToast('Fetching location...','info');user.location=await getLocationPlace();pushRemoteData()}
+    var rec=APP.attendance.find(function(a){return a.userId===user.id&&a.date===getTodayStr()});
+    if(!rec){
+        var tn=getNowTime(),il=tn>APP.config.lateTime;
+            var locName = (LAST_LOCATION && LAST_LOCATION.name) || (user.location || 'N/A');
+            var locLink = (LAST_LOCATION && LAST_LOCATION.link) || null;
+            var lat = (LAST_LOCATION && LAST_LOCATION.lat) || null;
+            var lon = (LAST_LOCATION && LAST_LOCATION.lon) || null;
+            APP.attendance.push({id:user.id+'_'+getTodayStr(),userId:user.id,date:getTodayStr(),loginTime:tn,logoutTime:null,location:locName,locationLink:locLink,locationLat:lat,locationLon:lon,status:'active',late:il});
+        pushRemoteData();
+        if(user.role!=='admin'&&il){showLatePopup(tn);return}
+    }
+    saveSession();showToast('Welcome, '+user.name.split(' ')[0]+'!','success');renderApp();
+}
+
+function showLatePopup(lt){
+    openModal('<div style="text-align:center;margin-bottom:16px"><div style="width:52px;height:52px;border-radius:50%;background:rgba(245,158,11,.13);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px"><i class="fas fa-exclamation-triangle" style="font-size:20px;color:var(--warn)"></i></div><h3 style="font-size:17px;font-weight:800;margin-bottom:3px">Late Arrival</h3><p style="color:var(--muted);font-size:12px">Logged in at <strong style="color:var(--warn)">'+lt+'</strong> — after '+APP.config.lateTime+'</p><p style="color:var(--dan);font-size:11px;margin-top:8px;font-weight:600">You will be logged out until admin approves.</p></div><div style="margin-bottom:16px"><label class="label">Reason for being late</label><textarea class="input" id="lateRemark" rows="3" placeholder="Explain..." style="resize:vertical"></textarea></div><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="submitLateRemark()"><i class="fas fa-paper-plane"></i> Submit & Logout</button>');
+}
+function submitLateRemark(){var r=document.getElementById('lateRemark').value.trim();if(!r){showToast('Please provide a reason','warning');return}APP.requests.push({id:genId(),userId:APP.currentUser.id,type:'late',date:getTodayStr(),time:getNowTime(),remark:r,location:APP.currentUser.location,status:'pending',createdAt:new Date().toISOString()});pushRemoteData();closeModal();showToast('Submitted. You will be logged out.','warning');clearSession();APP.currentUser=null;renderApp()}
+function submitLateRemark(){var r=document.getElementById('lateRemark').value.trim();if(!r){showToast('Please provide a reason','warning');return}var locName=(LAST_LOCATION&&LAST_LOCATION.name)||APP.currentUser.location||'N/A';var locLink=(LAST_LOCATION&&LAST_LOCATION.link)||null;var lat=(LAST_LOCATION&&LAST_LOCATION.lat)||null;var lon=(LAST_LOCATION&&LAST_LOCATION.lon)||null;APP.requests.push({id:genId(),userId:APP.currentUser.id,type:'late',date:getTodayStr(),time:getNowTime(),remark:r,location:locName,locationLink:locLink,locationLat:lat,locationLon:lon,status:'pending',createdAt:new Date().toISOString()});pushRemoteData();closeModal();showToast('Submitted. You will be logged out.','warning');clearSession();APP.currentUser=null;renderApp()}
+
+/* ===== LOGOUT ===== */
+function handleLogout(){if(!APP.currentUser)return;closeMobileMenu();var ar=APP.attendance.find(function(a){return a.userId===APP.currentUser.id&&a.date===getTodayStr()&&a.status==='active'});if(ar){openModal('<div style="text-align:center;margin-bottom:18px"><div style="width:52px;height:52px;border-radius:50%;background:var(--adim);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px"><i class="fas fa-sign-out-alt" style="font-size:20px;color:var(--accent)"></i></div><h3 style="font-size:17px;font-weight:800;margin-bottom:4px">Exit Type</h3></div><div style="display:flex;flex-direction:column;gap:10px"><button class="btn btn-secondary" style="width:100%;justify-content:center;padding:14px;flex-direction:column" onclick="doLogout(\'sys\')"><i class="fas fa-sign-out-alt" style="font-size:16px;margin-bottom:2px"></i><span style="font-weight:700">Logout from System</span><span style="font-size:10px;color:var(--muted)">Attendance stays active</span></button><button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;flex-direction:column" onclick="doLogout(\'off\')"><i class="fas fa-door-open" style="font-size:16px;margin-bottom:2px"></i><span style="font-weight:700">Leaving Office</span><span style="font-size:10px;color:rgba(0,0,0,.5)">Completes attendance</span></button></div>')}else{clearSession();APP.currentUser=null;renderApp()}}
+function doLogout(t){closeModal();if(t==='sys'){clearSession();APP.currentUser=null;renderApp();showToast('Logged out','info');return}var r=APP.attendance.find(function(a){return a.userId===APP.currentUser.id&&a.date===getTodayStr()&&a.status==='active'});if(r){var tm=getNowTime();r.logoutTime=tm;r.status='done';if(tm<APP.config.earlyTime){showEarlyPopup(tm);return}pushRemoteData();showToast('Marked as left office','success')}clearSession();APP.currentUser=null;renderApp()}
+function showEarlyPopup(ot){openModal('<div style="text-align:center;margin-bottom:16px"><div style="width:52px;height:52px;border-radius:50%;background:rgba(239,68,68,.13);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px"><i class="fas fa-clock" style="font-size:20px;color:var(--dan)"></i></div><h3 style="font-size:17px;font-weight:800;margin-bottom:3px">Early Departure</h3><p style="color:var(--muted);font-size:12px">Leaving at <strong style="color:var(--dan)">'+ot+'</strong> — before '+APP.config.earlyTime+'</p></div><div style="margin-bottom:16px"><label class="label">Reason</label><textarea class="input" id="earlyRemark" rows="3" placeholder="Explain..." style="resize:vertical"></textarea></div><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="submitEarlyRemark()"><i class="fas fa-paper-plane"></i> Submit</button>')}
+function submitEarlyRemark(){var r=document.getElementById('earlyRemark').value.trim();if(!r){showToast('Please provide a reason','warning');return}APP.requests.push({id:genId(),userId:APP.currentUser.id,type:'early',date:getTodayStr(),time:getNowTime(),remark:r,location:APP.currentUser.location,status:'pending',createdAt:new Date().toISOString()});pushRemoteData();closeModal();showToast('Early departure sent','warning');clearSession();APP.currentUser=null;renderApp()}
+function submitEarlyRemark(){var r=document.getElementById('earlyRemark').value.trim();if(!r){showToast('Please provide a reason','warning');return}var locName=(LAST_LOCATION&&LAST_LOCATION.name)||APP.currentUser.location||'N/A';var locLink=(LAST_LOCATION&&LAST_LOCATION.link)||null;var lat=(LAST_LOCATION&&LAST_LOCATION.lat)||null;var lon=(LAST_LOCATION&&LAST_LOCATION.lon)||null;APP.requests.push({id:genId(),userId:APP.currentUser.id,type:'early',date:getTodayStr(),time:getNowTime(),remark:r,location:locName,locationLink:locLink,locationLat:lat,locationLon:lon,status:'pending',createdAt:new Date().toISOString()});pushRemoteData();closeModal();showToast('Early departure sent','warning');clearSession();APP.currentUser=null;renderApp()}
+
+/* ===== DASHBOARD ===== */
+function renderDashboard(){
+    var mob=isMobileView(),hs=mob?'18px':'22px';var hln=isTodayHoliday();
+    if(isAdmin()){
+        var ec=APP.users.filter(function(u){return u.role!=='admin'}).length,ac=APP.users.filter(function(u){return u.role!=='admin'&&u.status==='active'}).length;
+        var ta=APP.attendance.filter(function(a){return a.date===getTodayStr()}),pc=ta.filter(function(a){return a.status!=='absent'}).length,lc=ta.filter(function(a){return a.late}).length;
+        var pr=APP.requests.filter(function(r){return r.status==='pending'}).length,pl=APP.leaves.filter(function(l){return l.status==='pending'}).length;
+        var st=[{l:'Employees',v:ec,s:ac+' active',c:'c1'},{l:'Present',v:pc,s:'of '+ec,c:'c2'},{l:'Late',v:lc,s:'attention',c:'c3'},{l:'Pending',v:pr+pl,s:pr+' att + '+pl+' leave',c:'c4'}];
+        var sh=st.map(function(s){return '<div class="card stat-card '+s.c+'"><p style="font-size:10px;color:var(--muted);font-weight:600">'+s.l+'</p><p style="font-size:'+(mob?'24px':'28px')+';font-weight:900;margin-top:2px">'+s.v+'</p><p style="font-size:9.5px;color:var(--muted);margin-top:2px">'+s.s+'</p></div>'}).join('');
+        var ar=ta.length?ta.slice(0,8).map(function(a){var u=findUser(a.userId);var sb=a.late?'<span class="badge badge-pending">Late</span>':(a.status==='active'?'<span class="badge" style="background:rgba(14,165,233,.13);color:var(--info)">Active</span>':'<span class="badge badge-approved">Present</span>');return '<tr><td style="font-weight:600">'+(u?('<a href="javascript:void(0)" onclick="showUserOverview(\''+u.id+'\')">'+u.name+'</a>'):'--')+'</td><td>'+(a.loginTime||'--')+'</td><td>'+sb+'</td></tr>'}).join(''):'<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px;font-size:12px">No records</td></tr>';
+        var ah=APP.announcements.length?APP.announcements.slice(0,4).map(function(a){return '<div style="padding:9px;background:var(--bg);border-radius:8px;margin-bottom:6px;border-left:3px solid '+(a.priority==='high'?'var(--dan)':'var(--accent')+'"><div style="font-size:12px;font-weight:600">'+a.title+'</div><div style="font-size:10px;color:var(--muted)">'+a.date+(a.targetNames?' — <span style="color:var(--info)">'+a.targetNames+'</span>':'')+'</div></div>'}).join(''):'<p style="color:var(--muted);text-align:center;padding:16px;font-size:12px">None</p>';
+        var upHols=APP.holidays.filter(function(h){return h.date>=getTodayStr()}).slice(0,3).map(function(h){return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><div><span style="font-size:12px;font-weight:600">'+h.name+'</span><span style="font-size:10px;color:var(--muted);margin-left:8px">'+h.date+'</span></div>'+(h.type==='custom'?'<span class="badge badge-pending">Custom</span>':'<span class="badge badge-approved">BB</span>')+'</div>'}).join('');
+        if(mob)return '<h2 style="font-size:'+hs+';font-weight:900;margin-bottom:14px">Dashboard</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'+sh+'</div><div class="card"><h3 style="font-size:13px;font-weight:700;margin-bottom:10px"><i class="fas fa-clock" style="color:var(--accent);margin-right:6px"></i>Today</h3><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Login</th><th>Status</th></tr></thead><tbody>'+ar+'</tbody></table></div></div><div class="card" style="margin-top:12px"><h3 style="font-size:13px;font-weight:700;margin-bottom:10px"><i class="fas fa-bullhorn" style="color:var(--accent);margin-right:6px"></i>Announcements</h3>'+ah+'</div>'+upHols?'<div class="card" style="margin-top:12px"><h3 style="font-size:13px;font-weight:700;margin-bottom:10px"><i class="fas fa-calendar-xmark" style="color:var(--warn);margin-right:6px"></i>Upcoming Holidays</h3>'+upHols+'</div>':'';
+        return '<h2 style="font-size:'+hs+';font-weight:900;margin-bottom:20px">Dashboard</h2><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">'+sh+'</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px"><div class="card"><h3 style="font-size:14px;font-weight:700;margin-bottom:12px"><i class="fas fa-clock" style="color:var(--accent);margin-right:6px"></i>Today</h3><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Login</th><th>Status</th></tr></thead><tbody>'+ar+'</tbody></table></div></div><div class="card"><h3 style="font-size:14px;font-weight:700;margin-bottom:12px"><i class="fas fa-bullhorn" style="color:var(--accent);margin-right:6px"></i>Announcements</h3>'+ah+'</div><div class="card"><h3 style="font-size:14px;font-weight:700;margin-bottom:12px"><i class="fas fa-calendar-xmark" style="color:var(--warn);margin-right:6px"></i>Upcoming Holidays</h3>'+upHols+'</div></div>';
+    }
+    var ma=APP.attendance.filter(function(a){return a.userId===APP.currentUser.id}),mt=ma.find(function(a){return a.date===getTodayStr()});
+    var ml=APP.leaves.filter(function(l){return l.userId===APP.currentUser.id}),al=ml.filter(function(l){return l.status==='approved'}).length;
+    var now=new Date(),tm=ma.filter(function(a){var d=new Date(a.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()}),ltm=tm.filter(function(a){return a.late}).length;
+    var ts=mt?(mt.status==='active'?'Active':(mt.late?'Late':'Present')):'Not In';
+    var eh=[{l:'Today',v:ts,c:'c2'},{l:'This Month',v:tm.length+' days',c:'c1'},{l:'Late',v:ltm+' times',c:'c3'},{l:'Leaves',v:al+' taken',c:'c4'}].map(function(s){return '<div class="card stat-card '+s.c+'"><p style="font-size:10px;color:var(--muted);font-weight:600">'+s.l+'</p><p style="font-size:'+(mob?'16px':'22px')+';font-weight:900;margin-top:2px">'+s.v+'</p></div>'}).join('');
+    var an2=APP.announcements.filter(function(a){return !a.targetIds || a.targetIds.indexOf(APP.currentUser.id)>=0 || a.targetIds.length===0}).map(function(a){return '<div style="padding:9px;background:var(--bg);border-radius:8px;margin-bottom:6px;border-left:3px solid '+(a.priority==='high'?'var(--dan)':'var(--accent')+'"><div style="font-size:12px;font-weight:600">'+a.title+'</div><div style="font-size:11px;color:var(--muted);line-height:1.5">'+a.content+'</div><div style="font-size:10px;color:var(--muted);margin-top:4px">'+a.date+'</div></div>'}).join('');
+    var rr=ma.length?ma.slice(-7).reverse().map(function(a){return '<tr><td style="font-weight:600">'+a.date+'</td><td>'+(a.loginTime||'--')+'</td><td>'+(a.logoutTime||'--')+'</td><td>'+(a.late?'<span class="badge badge-pending">Y</span>':'<span class="badge badge-approved">N</span>')+'</td></tr>'}).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:12px;font-size:12px">No records</td></tr>';
+    var eHols=APP.holidays.filter(function(h){return h.date>=getTodayStr()}).slice(0,3).map(function(h){return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px;font-weight:600">'+h.name+'</span><span style="font-size:10px;color:var(--muted)">'+h.date+'</span></div>'}).join('');
+    return '<h2 style="font-size:'+hs+';font-weight:900;margin-bottom:14px">My Dashboard</h2><div style="display:grid;grid-template-columns:repeat('+(mob?'2':'4')+',1fr);gap:'+(mob?'10':'14')+'px;margin-bottom:14px">'+eh+'</div><div style="display:'+(mob?'flex;flex-direction:column':'grid;grid-template-columns:1fr 1fr')+';gap:12px"><div class="card"><h3 style="font-size:13px;font-weight:700;margin-bottom:10px"><i class="fas fa-bullhorn" style="color:var(--accent);margin-right:6px"></i>Announcements</h3>'+an2+'</div><div class="card"><h3 style="font-size:13px;font-weight:700;margin-bottom:10px"><i class="fas fa-history" style="color:var(--accent);margin-right:6px"></i>Recent</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>In</th><th>Out</th><th>Late</th></tr></thead><tbody>'+rr+'</tbody></table></div></div>'+(eHols?'<div class="card" style="margin-top:12px"><h3 style="font-size:13px;font-weight:700;margin-bottom:10px"><i class="fas fa-calendar-xmark" style="color:var(--warn);margin-right:6px"></i>Upcoming Holidays</h3>'+eHols+'</div>':'');
+}
+
+/* ===== ATTENDANCE ===== */
+function renderAttendance(){return isAdmin()?renderAdminAtt():renderEmpAtt()}
+function renderEmpAtt(){
+    var mob=isMobileView(),ma=APP.attendance.filter(function(a){return a.userId===APP.currentUser.id}).sort(function(a,b){return b.date.localeCompare(a.date)});
+    var now=new Date(),mc=ma.filter(function(a){var d=new Date(a.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()}).length;
+    var rows = ma.length ? ma.map(function(a){
+        if(mob) return '<tr><td style="font-weight:600">'+a.date+'</td><td style="font-size:10px">'+(a.loginTime||'--')+' / '+(a.logoutTime||'--')+'</td><td>'+(a.late?'<span class="badge badge-pending">Y</span>':'<span class="badge badge-approved">N</span>')+'</td></tr>';
+        return '<tr><td style="font-weight:600">'+a.date+'</td><td>'+(a.loginTime||'--')+'</td><td>'+(a.logoutTime||'--')+'</td><td style="font-size:10px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+renderLocationField(a)+'</td><td>'+(a.late?'<span class="badge badge-pending">Y</span>':'<span class="badge badge-approved">N</span>')+'</td><td>'+(a.status==='active'?'<span class="badge" style="background:rgba(14,165,233,.13);color:var(--info)">Active</span>':'<span class="badge badge-approved">Done</span>')+'</td></tr>';
+    }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No records</td></tr>';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">My Attendance</h2><p style="color:var(--muted);font-size:11px;margin-top:2px">'+mc+' days</p></div><button class="btn btn-secondary'+(mob?' btn-sm':'')+'" onclick="showEditProfile()"><i class="fas fa-user-edit"></i>'+(mob?'':' Edit Profile')+'</button></div><div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr>'+(mob?'<th>Date</th><th>In/Out</th><th>Late</th>':'<th>Date</th><th>Login</th><th>Logout</th><th>Location</th><th>Late</th><th>Status</th>')+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>'
+}
+function renderAdminAtt(){
+    var mob=isMobileView(),ms=[];
+    for(var i=5;i>=0;i--){var d=new Date();d.setMonth(d.getMonth()-i);ms.push({v:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),l:d.toLocaleString('default',{month:'short',year:'numeric'})})}
+    var sm=(document.getElementById('attMS')||{}).value||ms[ms.length-1].v,se=(document.getElementById('attES')||{}).value||'';
+    var ft=APP.attendance.filter(function(a){return a.date.startsWith(sm)});
+    if(se) ft=ft.filter(function(a){return a.userId===se});
+    ft.sort(function(a,b){return b.date.localeCompare(a.date)});
+    var rows = ft.length ? ft.map(function(a){
+        var u=findUser(a.userId);
+        if(mob) return '<tr><td style="font-weight:600">'+(u?('<a href="javascript:void(0)" onclick="showUserOverview(\''+u.id+'\')">'+u.name+'</a>'):'--')+'</td><td>'+a.date+'</td><td style="font-size:10px">'+(a.loginTime||'--')+'-'+(a.logoutTime||'--')+'</td><td>'+(a.late?'<span class="badge badge-pending">L</span>':'<span class="badge badge-approved">OK</span>')+'</td></tr>';
+        return '<tr><td style="font-weight:600">'+(u?('<a href="javascript:void(0)" onclick="showUserOverview(\''+u.id+'\')">'+u.name+'</a>'):'--')+'</td><td style="color:var(--muted)'+(u?u.department:'--')+'</td><td>'+a.date+'</td><td>'+(a.loginTime||'--')+'</td><td>'+(a.logoutTime||'--')+'</td><td style="font-size:10px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+renderLocationField(a)+'</td><td>'+(a.late?'<span class="badge badge-pending">Y</span>':'<span class="badge badge-approved">N</span>')+'</td></tr>';
+    }).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No records</td></tr>';
+    var eo='<option value="">All</option>'+APP.users.filter(function(u){return u.role!=='admin'}).map(function(u){return '<option value="'+u.id+'"'+(se===u.id?' selected':'')+'>'+u.name+'</option>';}).join('');
+    var mo=ms.map(function(m){return '<option value="'+m.v+'"'+(m.v===sm?' selected':'')+'>'+m.l+'</option>';}).join('');
+    return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Attendance</h2></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><select class="input" style="width:'+(mob?'120px':'150px')+'" id="attMS" onchange="renderApp()">'+mo+'</select>'+(mob?'<select class="input" style="margin-bottom:10px" id="attES" onchange="renderApp()">'+eo+'</select>':'<select class="input" style="width:150px" id="attES" onchange="renderApp()">'+eo+'</select>')+'<button class="btn btn-primary btn-sm" onclick="downloadCSV()"><i class="fas fa-download"></i></button></div></div><div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr>'+(mob?'<th>Emp</th><th>Date</th><th>Time</th><th>L</th>':'<th>Employee</th><th>Dept</th><th>Date</th><th>Login</th><th>Logout</th><th>Location</th><th>Late</th>')+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
+function downloadCSV(){var sm=(document.getElementById('attMS')||{}).value,se=(document.getElementById('attES')||{}).value||'';var d=APP.attendance.filter(function(a){return a.date.startsWith(sm)});if(se)d=d.filter(function(a){return a.userId===se});d.sort(function(a,b){return b.date.localeCompare(a.date)});var c='Employee,Department,Date,Login,Logout,Location,Late,Status\n';d.forEach(function(a){var u=findUser(a.userId);c+='"'+(u?u.name:'')+'","'+(u?u.department:'')+'","'+a.date+'","'+(a.loginTime||'')+'","'+(a.logoutTime||'')+'","'+(a.location||'')+'","'+(a.late?'Yes':'No')+'","'+a.status+'"\n'});var b=new Blob([c],{type:'text/csv'});var u=URL.createObjectURL(b);var a=document.createElement('a');a.href=u;a.download='AMK_Attendance_'+sm+'.csv';a.click();URL.revokeObjectURL(u);showToast('Downloaded','success')}
+
+/* ===== ANNOUNCEMENTS ===== */
+function renderAnnouncements(){var mob=isMobileView();var items=APP.announcements.sort(function(a,b){return b.date.localeCompare(a.date)});var lh=items.map(function(a){var tn=a.targetIds&&a.targetIds.length>0?a.targetIds.map(function(id){var u=findUser(id);return u?u.name:'Unknown'}).join(', '):'All Employees';return '<div class="card" style="border-left:3px solid '+(a.priority==='high'?'var(--dan)':'var(--accent')+'"><div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px"><div><h3 style="font-size:14px;font-weight:700">'+a.title+'</h3><span style="font-size:10px;color:var(--muted)">'+a.date+' — <span style="color:var(--info)">'+tn+'</span></span></div><button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(\''+a.id+'\')"><i class="fas fa-trash"></i></button></div><p style="font-size:12px;color:var(--muted);line-height:1.6">'+a.content+'</p></div>'}).join('');if(!items.length)lh='<div class="card" style="text-align:center;color:var(--muted);padding:30px">None</div>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Announcements</h2></div><button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAddAnnouncement()"><i class="fas fa-plus"></i>'+(mob?'':' New')+'</button></div><div style="display:flex;flex-direction:column;gap:10px">'+lh+'</div>'}
+function showAddAnnouncement(){
+    var users = APP.users.filter(function(u){return u.role!=='admin'&&u.status==='active'});
+    var list = users.map(function(u){return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><input type="checkbox" class="ann-user-cbx" id="ann_user_'+u.id+'" value="'+u.id+'"><label for="ann_user_'+u.id+'" style="flex:1">'+u.name+' <span style="color:var(--muted);font-size:11px">('+ (u.department||'') +')</span></label></div>'}).join('');
+    var html = '<h3 style="font-size:17px;font-weight:800;margin-bottom:12px">New Announcement</h3>'+
+        '<div style="margin-bottom:10px"><label class="label">Title</label><input class="input" id="annTitle" placeholder="Title"></div>'+
+        '<div style="margin-bottom:10px"><label class="label">Target (tick recipients, leave all unchecked for All)</label><div style="border:1px solid var(--border);max-height:220px;overflow:auto;padding:8px;border-radius:8px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="ann_select_all"><label for="ann_select_all" style="font-size:12px;color:var(--muted)">Select all</label></div>'+ (list||'<div style="color:var(--muted)">No active employees</div>') +'</div></div>'+
+        '<div style="margin-bottom:10px"><label class="label">Priority</label><select class="input" id="annPriority"><option value="normal">Normal</option><option value="high">High</option></select></div>'+
+        '<div style="margin-bottom:12px"><label class="label">Content</label><textarea class="input" id="annContent" rows="4" placeholder="Content..." style="resize:vertical"></textarea></div>'+
+        '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="addAnnouncement()"><i class="fas fa-paper-plane"></i> Post</button></div>';
+    openModal(html);
+    // wire up select all
+    setTimeout(function(){
+        var sa=document.getElementById('ann_select_all');
+        if(!sa) return;
+        sa.addEventListener('change', function(){
+            var cbx = document.querySelectorAll('.ann-user-cbx');
+            cbx.forEach(function(c){c.checked = sa.checked});
+        });
+    },50);
+}
+function addAnnouncement(){
+    var t=document.getElementById('annTitle').value.trim();
+    var p=document.getElementById('annPriority').value;
+    var c=document.getElementById('annContent').value.trim();
+    if(!t||!c){showToast('Fill all fields','warning');return}
+    var selected = [];
+    var cbxList = document.querySelectorAll('.ann-user-cbx');
+    if(cbxList && cbxList.length>0){
+        selected = Array.from(cbxList).filter(function(i){return i.checked}).map(function(i){return i.value});
+    } else {
+        var sel=document.getElementById('annTarget');
+        if(sel){selected = Array.from(sel.selectedOptions).map(function(o){return o.value}).filter(Boolean)}
+    }
+    var names = selected.map(function(id){var u=findUser(id);return u?u.name:''}).filter(Boolean);
+    APP.announcements.push({id:genId(),title:t,content:c,date:getTodayStr(),postedBy:APP.currentUser.id,priority:p,targetIds:selected,targetNames:names});
+    pushRemoteData();closeModal();showToast('Posted','success');renderApp();
+}
+function deleteAnnouncement(id){APP.announcements=APP.announcements.filter(function(a){return a.id!==id});pushRemoteData();showToast('Deleted','info');renderApp()}
+
+/* ===== EMPLOYEES ===== */
+function renderEmployees(){var mob=isMobileView(),au=APP.users.filter(function(u){return u.role!=='admin'}),rf=(document.getElementById('empRF')||{}).value||'',df=rf?au.filter(function(u){return u.role===rf}):au;var rows=df.map(function(u){return '<tr><td style="font-weight:600">'+u.name+'</td>'+(mob?'':'<td style="color:var(--muted);font-size:11px">'+u.username+'</td>')+'<td><span class="badge '+(u.role==='hr'?'badge-pending':'badge-approved')+'">'+u.role+'</span></td>'+(mob?'':'<td style="color:var(--muted)">'+(u.department||'--')+'</td><td><span class="badge '+(u.status==='active'?'badge-approved':'badge-rejected')+'">'+u.status+'</span></td>')+'<td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="showEditEmployee(\''+u.id+'\')"><i class="fas fa-edit"></i></button> <button class="btn btn-secondary btn-sm" onclick="showResetCreds(\''+u.id+'\')"><i class="fas fa-key"></i></button> <button class="btn '+(u.status==='active'?'btn-danger':'btn-success')+' btn-sm" onclick="toggleUserStatus(\''+u.id+'\')"><i class="fas fa-'+(u.status==='active'?'ban':'check')+'"></i></button> <button class="btn btn-danger btn-sm" onclick="confirmDeleteUser(\''+u.id+'\')"><i class="fas fa-trash"></i></button></td></tr>'}).join('');var fh='<select class="input" style="width:130px" id="empRF" onchange="renderApp()"><option value="">All Roles</option><option value="hr"'+(rf==='hr'?' selected':'')+'>HR</option><option value="employee"'+(rf==='employee'?' selected':'')+'>Employee</option></select>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Employees</h2></div><div style="display:flex;gap:6px">'+(mob?'':fh)+'<button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAddEmployee()"><i class="fas fa-plus"></i>'+(mob?'':' Add')+'</button></div></div>'+(mob?'<div style="margin-bottom:10px">'+fh+'</div>':'')+'<div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>Name</th>'+(mob?'':'<th>Username</th>')+'<th>Role</th>'+(mob?'':'<th>Dept</th><th>Status</th>')+'<th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
+function showAddEmployee(){openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Create User</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Name *</label><input class="input" id="eN" placeholder="Name"></div><div><label class="label">Username *</label><input class="input" id="eU" placeholder="Username"></div><div><label class="label">Password *</label><input class="input" id="eP" placeholder="Password"></div><div><label class="label">Role</label><select class="input" id="eR"><option value="employee">Employee</option><option value="hr">HR</option></select></div><div><label class="label">Email</label><input class="input" id="eE" placeholder="Email"></div><div><label class="label">Phone</label><input class="input" id="ePh" placeholder="Phone"></div><div><label class="label">Department</label><input class="input" id="eD" placeholder="Dept"></div><div><label class="label">Designation</label><input class="input" id="eDs" placeholder="Designation"></div><div><label class="label">Joining Date</label><input class="input" id="eJ" type="date"></div><div><label class="label">Gender</label><select class="input" id="eG"><option>Male</option><option>Female</option><option>Other</option></select></div></div><div style="margin-bottom:16px"><label class="label">Address</label><input class="input" id="eA" placeholder="Address"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="addEmp()"><i class="fas fa-user-plus"></i> Create</button></div>')}
+function addEmp(){var n=document.getElementById('eN').value.trim(),u=document.getElementById('eU').value.trim(),p=document.getElementById('eP').value.trim();if(!n||!u||!p){showToast('Name, username, password required','warning');return}if(APP.users.find(function(x){return x.username===u})){showToast('Username exists','error');return}APP.users.push({id:genId(),username:u,password:p,name:n,role:document.getElementById('eR').value,email:document.getElementById('eE').value.trim(),phone:document.getElementById('ePh').value.trim(),department:document.getElementById('eD').value.trim(),designation:document.getElementById('eDs').value.trim(),joinDate:document.getElementById('eJ').value,gender:document.getElementById('eG').value,address:document.getElementById('eA').value.trim(),status:'active',dob:'',location:null});pushRemoteData();closeModal();showToast('Created','success');renderApp()}
+function showEditEmployee(id){var u=findUser(id);if(!u)return;openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Edit — '+u.name+'</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Name</label><input class="input" id="xN" value="'+u.name+'"></div><div><label class="label">Username</label><input class="input" id="xU" value="'+u.username+'"></div><div><label class="label">Role</label><select class="input" id="xR"><option value="employee"'+(u.role==='employee'?' selected':'')+'>Employee</option><option value="hr"'+(u.role==='hr'?' selected':'')+'>HR</option></select></div><div><label class="label">Email</label><input class="input" id="xE" value="'+(u.email||'')+'"></div><div><label class="label">Phone</label><input class="input" id="xPh" value="'+(u.phone||'')+'"></div><div><label class="label">Department</label><input class="input" id="xD" value="'+(u.department||'')+'"></div><div><label class="label">Designation</label><input class="input" id="xDs" value="'+(u.designation||'')+'"></div><div><label class="label">Joining</label><input class="input" id="xJ" type="date" value="'+(u.joinDate||'')+'"></div><div><label class="label">Gender</label><select class="input" id="xG">'+['Male','Female','Other'].map(function(g){return '<option'+(u.gender===g?' selected':'')+'>'+g+'</option>';}).join('')+'</select></div><div><label class="label">DOB</label><input class="input" id="xDob" type="date" value="'+(u.dob||'')+'"></div><div><label class="label">Casual quota (override)</label><input class="input" id="xCQ" type="number" min="0" value="'+(u.casualQuota!=null?u.casualQuota:'')+'"></div><div><label class="label">Sick quota (override)</label><input class="input" id="xSQ" type="number" min="0" value="'+(u.sickQuota!=null?u.sickQuota:'')+'"></div></div><div style="margin-bottom:16px"><label class="label">Address</label><input class="input" id="xA" value="'+(u.address||'')+'"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEE(\''+id+'\')"><i class="fas fa-save"></i> Save</button></div>')}
+function saveEE(id){var u=findUser(id);if(!u)return;var nu=document.getElementById('xU').value.trim();if(nu!==u.username&&APP.users.find(function(x){return x.username===nu})){showToast('Taken','error');return}u.name=document.getElementById('xN').value.trim()||u.name;u.username=nu||u.username;u.role=document.getElementById('xR').value;u.email=document.getElementById('xE').value.trim();u.phone=document.getElementById('xPh').value.trim();u.department=document.getElementById('xD').value.trim();u.designation=document.getElementById('xDs').value.trim();u.joinDate=document.getElementById('xJ').value;u.gender=document.getElementById('xG').value;u.dob=document.getElementById('xDob').value;var cq=(document.getElementById('xCQ')||{}).value, sq=(document.getElementById('xSQ')||{}).value;u.casualQuota = cq!==''?parseFloat(cq): (u.casualQuota!=null?u.casualQuota:null);u.sickQuota = sq!==''?parseFloat(sq): (u.sickQuota!=null?u.sickQuota:null);u.address=document.getElementById('xA').value.trim();if(u.id===APP.currentUser.id)APP.currentUser=u;pushRemoteData();closeModal();showToast('Updated','success');renderApp()}
+function toggleUserStatus(id){var u=findUser(id);if(!u)return;u.status=u.status==='active'?'inactive':'active';pushRemoteData();showToast(u.status==='active'?'Activated':'Deactivated','info');renderApp()}
+function showResetCreds(id){var u=findUser(id);if(!u)return;openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Reset Credentials — '+u.name+'</h3><div style="margin-bottom:12px"><label class="label">Username</label><input class="input" id="rU" value="'+u.username+'"></div><div style="margin-bottom:16px"><label class="label">Password</label><input class="input" id="rP" value="'+u.password+'"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveRC(\''+id+'\')"><i class="fas fa-key"></i> Update</button></div>')}
+function saveRC(id){var u=findUser(id);if(!u)return;var nu=document.getElementById('rU').value.trim(),np=document.getElementById('rP').value.trim();if(!nu||!np){showToast('Required','warning');return}if(nu!==u.username&&APP.users.find(function(x){return x.username===nu})){showToast('Taken','error');return}u.username=nu;u.password=np;if(u.id===APP.currentUser.id)APP.currentUser=u;pushRemoteData();closeModal();showToast('Updated','success');renderApp()}
+function confirmDeleteUser(id){var u=findUser(id);if(!u)return;openModal('<div style="text-align:center;margin-bottom:16px"><h3 style="font-size:17px;font-weight:800;margin-bottom:4px">Delete '+u.name+'?</h3><p style="color:var(--muted);font-size:12px">Permanently deletes user and all data.</p></div><div style="display:flex;gap:8px;justify-content:center"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-danger" onclick="delU(\''+id+'\')"><i class="fas fa-trash"></i> Delete</button></div>')}
+function delU(id){APP.users=APP.users.filter(function(u){return u.id!==id});APP.attendance=APP.attendance.filter(function(a){return a.userId!==id});APP.leaves=APP.leaves.filter(function(l){return l.userId!==id});APP.requests=APP.requests.filter(function(r){return r.userId!==id});pushRemoteData();closeModal();showToast('Deleted','info');renderApp()}
+
+/* ===== LEAVE APP ===== */
+function renderLeaveApp(){var mob=isMobileView(),ml=APP.leaves.filter(function(l){return l.userId===APP.currentUser.id}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)});var rows=ml.map(function(l){return '<tr><td style="font-weight:600">'+l.fromDate+'</td><td>'+l.toDate+'</td>'+(mob?'':'<td>'+l.days+'</td>')+'<td style="font-size:10px">'+l.type+'</td><td><span class="badge badge-'+(l.status==='approved'?'approved':l.status==='rejected'?'rejected':'pending')+'">'+l.status+'</span></td></tr>';}).join('');if(!ml.length)rows='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">None</td></tr>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Leave Application</h2></div><button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAL()"><i class="fas fa-plus"></i>'+(mob?'':' Apply')+'</button></div><div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>From</th><th>To</th>'+(mob?'':'<th>Days</th>')+'<th>Type</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
+function getLeaveBalance(userId){
+    var year = new Date().getFullYear();
+    var used = APP.leaves.filter(function(l){return l.userId===userId && (l.status==='approved' || l.status==='pending') && new Date(l.createdAt).getFullYear()===year}).reduce(function(acc,l){return acc + (parseFloat(l.days)||0)},0);
+    var user = findUser(userId) || {};
+    var casualTotal = (user.casualQuota!=null)?user.casualQuota:(APP.config.casualPerYear||0);
+    var sickTotal = (user.sickQuota!=null)?user.sickQuota:(APP.config.sickPerYear||0);
+    var casualUsed = APP.leaves.filter(function(l){return l.userId===userId && (l.status==='approved' || l.status==='pending') && new Date(l.createdAt).getFullYear()===year && (l.type==='Casual Leave' || (l.type==='Half Day' && l.halfFor==='Casual Leave'))}).reduce(function(acc,l){return acc + (parseFloat(l.days)||0)},0);
+    var sickUsed = APP.leaves.filter(function(l){return l.userId===userId && (l.status==='approved' || l.status==='pending') && new Date(l.createdAt).getFullYear()===year && (l.type==='Sick Leave' || (l.type==='Half Day' && l.halfFor==='Sick Leave'))}).reduce(function(acc,l){return acc + (parseFloat(l.days)||0)},0);
+    return {casualUsed:casualUsed,casualRemaining:Math.max(0,casualTotal-casualUsed),casualTotal:casualTotal,sickUsed:sickUsed,sickRemaining:Math.max(0,sickTotal-sickUsed),sickTotal:sickTotal};
+}
+
+function renderLeaveApp(){var mob=isMobileView(),bal=getLeaveBalance(APP.currentUser.id),ml=APP.leaves.filter(function(l){return l.userId===APP.currentUser.id}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)});var rows=ml.map(function(l){return '<tr><td style="font-weight:600">'+l.fromDate+'</td><td>'+l.toDate+'</td>'+(mob?'':'<td>'+l.days+'</td>')+'<td style="font-size:10px">'+l.type+'</td><td><span class="badge badge-'+(l.status==='approved'?'approved':l.status==='rejected'?'rejected':'pending')+'">'+l.status+'</span></td></tr>';}).join('');if(!ml.length)rows='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">None</td></tr>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Leave Application</h2><div style="font-size:12px;color:var(--muted);margin-top:6px">Casual: '+bal.casualRemaining+' of '+bal.casualTotal+' days — Sick: '+bal.sickRemaining+' of '+bal.sickTotal+' days</div></div></div><button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAL()"><i class="fas fa-plus"></i>'+(mob?'':' Apply')+'</button></div><div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>From</th><th>To</th>'+(mob?'':'<th>Days</th>')+'<th>Type</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
+function showAL(){openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Apply for Leave</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">From</label><input class="input" id="lF" type="date"></div><div><label class="label">To (for Casual/Sick)</label><input class="input" id="lT" type="date"></div></div><div style="margin-bottom:12px"><label class="label">Type</label><select class="input" id="lTp"><option>Casual Leave</option><option>Sick Leave</option><option>Half Day</option></select></div><div style="margin-bottom:12px"><label class="label">If Half Day: Session</label><select class="input" id="lSession"><option value="morning">Morning</option><option value="afternoon">Afternoon</option></select></div><div style="margin-bottom:12px"><label class="label">If Half Day applies to</label><select class="input" id="lHalfFor"><option>Casual Leave</option><option>Sick Leave</option></select></div><div style="margin-bottom:16px"><label class="label">Reason</label><textarea class="input" id="lRs" rows="3" placeholder="Reason..." style="resize:vertical"></textarea></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="subL()"><i class="fas fa-paper-plane"></i> Submit</button></div>')}
+function subL(){var f=document.getElementById('lF').value,t=document.getElementById('lT').value,tp=document.getElementById('lTp').value,r=document.getElementById('lRs').value.trim();if(!f||!tp||!r){showToast('Fill all fields','warning');return}if(tp!=='Half Day' && !t){showToast('Select To date for date based leaves','warning');return}if(tp!=='Half Day' && t<f){showToast('Invalid dates','error');return}
+    var days=1;
+    if(tp==='Half Day'){
+        days=0.5;
+        t=f; // same date
+        var halfFor = (document.getElementById('lHalfFor')||{}).value || 'Casual Leave';
+    } else {
+        days=Math.ceil((new Date(t)-new Date(f))/86400000)+1;
+    }
+    APP.leaves.push({id:genId(),userId:APP.currentUser.id,fromDate:f,toDate:t,days:days,type:tp,session:(tp==='Half Day'?document.getElementById('lSession').value:null),halfFor:(tp==='Half Day'?halfFor:null),reason:r,status:'pending',createdAt:new Date().toISOString()});
+    pushRemoteData();closeModal();showToast('Submitted','success');renderApp()
+}
+
+/* ===== LEAVE MGMT ===== */
+function renderLeaveMgmt(){var ls=APP.leaves.sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)});var rows=ls.map(function(l){var u=findUser(l.userId);var ac=l.status==='pending'?'<button class="btn btn-success btn-sm" onclick="apLv(\''+l.id+'\')"><i class="fas fa-check"></i></button> <button class="btn btn-danger btn-sm" onclick="rjLv(\''+l.id+'\')"><i class="fas fa-times"></i></button>':'<button class="btn btn-secondary btn-sm" onclick="edLA(\''+l.id+'\')"><i class="fas fa-edit"></i> Edit</button>';return '<tr><td style="font-weight:600">'+(u?('<a href="javascript:void(0)" onclick="showUserOverview(\''+u.id+'\')">'+u.name+'</a>'):'--')+'</td><td>'+l.fromDate+'</td><td>'+l.toDate+'</td>'+(isMobileView()?'':'<td>'+l.days+'</td><td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">'+l.reason+'</td>')+'<td><span class="badge badge-'+(l.status==='approved'?'approved':l.status==='rejected'?'rejected':'pending')+'">'+l.status+'</span></td><td style="white-space:nowrap">'+ac+'</td></tr>';}).join('');return '<div style="margin-bottom:16px"><h2 style="font-size:18px;font-weight:900">Leave Management</h2><p style="color:var(--muted);font-size:11px;margin-top:2px">'+ls.filter(function(l){return l.status==='pending'}).length+' pending</p></div><div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>Employee</th><th>From</th><th>To</th>'+(isMobileView()?'':'<th>Days</th><th>Reason</th>')+'<th>St</th><th>Act</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
+function apLv(id){var l=APP.leaves.find(function(x){return x.id===id});if(l){l.status='approved';l.actionBy=APP.currentUser.id;pushRemoteData();showToast('Approved','success');renderApp()}}
+function rjLv(id){var l=APP.leaves.find(function(x){return x.id===id});if(l){l.status='rejected';l.actionBy=APP.currentUser.id;pushRemoteData();showToast('Rejected','info');renderApp()}}
+function edLA(id){
+    var l=APP.leaves.find(function(x){return x.id===id});
+    if(!l) return;
+    openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:14px">Edit Leave Action</h3>'+
+        '<div style="padding:10px;background:var(--bg);border-radius:8px;margin-bottom:12px"><p style="font-size:12px;font-weight:600">'+(findUser(l.userId)?findUser(l.userId).name:'--')+' — '+l.type+'</p><p style="font-size:10.5px;color:var(--muted);margin-top:2px">'+l.fromDate+' to '+l.toDate+'</p></div>'+
+        '<div style="margin-bottom:12px"><label class="label">Status</label><select class="input" id="xLS"><option value="pending"'+(l.status==='pending'?' selected':'')+'>Pending</option><option value="approved"'+(l.status==='approved'?' selected':'')+'>Approved</option><option value="rejected"'+(l.status==='rejected'?' selected':'')+'>Rejected</option></select></div>'+
+        '<div style="margin-bottom:12px"><label class="label">Days</label><input class="input" id="xLD" type="number" min="0" step="0.5" value="'+(l.days||0)+'"></div>'+
+        '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="svLA(\''+id+'\')"><i class="fas fa-save"></i> Save</button></div>'
+    );
+}
+function svLA(id){
+    var l=APP.leaves.find(function(x){return x.id===id});
+    if(!l) return;
+    l.status = document.getElementById('xLS').value;
+    var nd = parseFloat((document.getElementById('xLD')||{}).value) || l.days || 0;
+    l.days = nd;
+    l.actionBy = APP.currentUser.id;
+    pushRemoteData();
+    closeModal();
+    showToast('Updated','success');
+    renderApp();
+}
+
+/* ===== PENDING REQUESTS ===== */
+function renderRequests(){
+    var rs=APP.requests.sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)}),pc=rs.filter(function(r){return r.status==='pending'}).length;
+    if(!rs.length) return '<div style="margin-bottom:16px"><h2 style="font-size:18px;font-weight:900">Pending Requests</h2></div><div class="card" style="text-align:center;color:var(--muted);padding:30px"><i class="fas fa-check-circle" style="font-size:32px;color:var(--suc);margin-bottom:8px;display:block"></i>All clear!</div>';
+    var lh=rs.map(function(r){
+        var u=findUser(r.userId);
+        var canAct=isAdminOrHR();
+        var ac='';
+        if(canAct){
+            ac=r.status==='pending'?'<button class="btn btn-success btn-sm" onclick="rrReq(\''+r.id+'\',\'approved\')"><i class="fas fa-check"></i></button> <button class="btn btn-danger btn-sm" onclick="rrReq(\''+r.id+'\',\'rejected\')"><i class="fas fa-times"></i></button>':'<button class="btn btn-secondary btn-sm" onclick="edReq(\''+r.id+'\')"><i class="fas fa-edit"></i> Edit</button>'
+        }
+        var bc=r.status==='pending'?'var(--warn)':(r.status==='approved'?'var(--suc)':'var(--dan)');
+        return '<div class="card" style="border-left:3px solid '+bc+'"><div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:8px"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap"><span style="font-weight:700;font-size:13px">'+(u?('<a href="javascript:void(0)" onclick="showUserOverview(\''+u.id+'\')">'+u.name+'</a>'):'--')+'</span><span class="badge '+(r.type==='late'?'badge-pending':'badge-rejected')+'">'+(r.type==='late'?'Late':'Early')+'</span><span class="badge badge-'+(r.status==='approved'?'approved':r.status==='rejected'?'rejected':'pending')+'">'+r.status+'</span></div><p style="font-size:12px;color:var(--text);margin-bottom:4px">'+r.remark+'</p><div style="display:flex;gap:12px;font-size:10px;color:var(--muted)"><span>'+r.date+'</span><span>'+r.time+'</span><span>'+renderLocationField(r)+'</span></div></div><div style="display:flex;gap:5px;flex-shrink:0">'+ac+'</div></div></div>'
+    }).join('');
+    return '<div style="margin-bottom:16px"><h2 style="font-size:18px;font-weight:900">Pending Requests</h2><p style="color:var(--muted);font-size:11px;margin-top:2px">'+pc+' pending, '+(rs.length-pc)+' resolved</p></div><div style="display:flex;flex-direction:column;gap:10px">'+lh+'</div>'
+}
+function rrReq(id,st){var r=APP.requests.find(function(x){return x.id===id});if(r){r.status=st;r.actionBy=APP.currentUser.id;pushRemoteData();showToast(st,'success');renderApp()}}
+function edReq(id){var r=APP.requests.find(function(x){return x.id===id});if(!r)return;openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:14px">Edit Request</h3><div style="padding:10px;background:var(--bg);border-radius:8px;margin-bottom:12px"><p style="font-size:12px;font-weight:600">'+(findUser(r.userId)?findUser(r.userId).name:'--')+' — '+(r.type==='late'?'Late Arrival':'Early Departure')+'</p><p style="font-size:10.5px;color:var(--muted);margin-top:2px">'+r.remark+' — '+r.date+' '+r.time+'</p></div><div style="margin-bottom:16px"><label class="label">Status</label><select class="input" id="xRS"><option value="pending"'+(r.status==='pending'?' selected':'')+'>Pending</option><option value="approved"'+(r.status==='approved'?' selected':'')+'>Approved</option><option value="rejected"'+(r.status==='rejected'?' selected':'')+'>Rejected</option></select></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="svReq(\''+id+'\')"><i class="fas fa-save"></i> Save</button></div>')}
+function svReq(id){var r=APP.requests.find(function(x){return x.id===id});if(!r)return;r.status=document.getElementById('xRS').value;r.actionBy=APP.currentUser.id;pushRemoteData();closeModal();showToast('Updated','success');renderApp()}
+
+/* ===== HOLIDAYS ===== */
+function renderHolidays(){var mob=isMobileView();var hol=APP.holidays.sort(function(a,b){return a.date.localeCompare(b.date)});var rows=hol.map(function(h){return '<tr><td style="font-weight:600">'+h.date+'</td><td style="color:var(--muted)">'+h.name+'</td><td>'+(h.type==='custom'?'<span class="badge badge-pending">Custom</span>':'<span class="badge badge-approved">Bangladesh Bank</span>')+'</td>'+(isAdmin()?'<td style="white-space:nowrap"><button class="btn btn-danger btn-sm" onclick="delHol(\''+h.id+'\')"><i class="fas fa-trash"></i></button></td>':'')+'</tr>'}).join('');if(!hol.length)rows='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">No holidays</td></tr>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Holidays '+new Date().getFullYear()+'</h2></div>'+(isAdmin()?'<button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAddHol()"><i class="fas fa-plus"></i>'+(mob?'':' Add Holiday')+'</button>':'')+'</div><div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Holiday</th><th>Type</th>'+(isAdmin()?'<th>Action</th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
+function showAddHol(){openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Add Holiday</h3><div style="margin-bottom:12px"><label class="label">Date</label><input class="input" id="hD" type="date"></div><div style="margin-bottom:16px"><label class="label">Holiday Name</label><input class="input" id="hN" placeholder="e.g. Eid ul Fitr"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="addHol()"><i class="fas fa-plus"></i> Add</button></div>')}
+function addHol(){var d=document.getElementById('hD').value,n=document.getElementById('hN').value.trim();if(!d||!n){showToast('Fill all fields','warning');return}APP.holidays.push({id:genId(),date:d,name:n,type:'custom'});APP.holidays.sort(function(a,b){return a.date.localeCompare(b.date)});pushRemoteData();closeModal();showToast('Added','success');renderApp()}
+function delHol(id){APP.holidays=APP.holidays.filter(function(h){return h.id!==id});pushRemoteData();showToast('Deleted','info');renderApp()}
+
+/* ===== POLICIES ===== */
+function renderPolicies(){var mob=isMobileView();var lh=APP.policies.map(function(p){return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px"><div><h3 style="font-size:14px;font-weight:700"><i class="fas fa-file-alt" style="color:var(--accent);margin-right:6px"></i>'+p.title+'</h3><span style="font-size:10px;color:var(--muted)">'+p.date+'</span></div>'+(isAdmin()?'<div style="display:flex;gap:4px"><button class="btn btn-secondary btn-sm" onclick="showEdPol(\''+p.id+'\')"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm" onclick="delPol(\''+p.id+'\')"><i class="fas fa-trash"></i></button></div>':'')+'</div><p style="font-size:12px;color:var(--muted);line-height:1.7">'+p.content+'</p></div>'}).join('');if(!APP.policies.length)lh='<div class="card" style="text-align:center;color:var(--muted);padding:30px">None</div>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Policies</h2></div>'+(isAdmin()?'<button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAddPol()"><i class="fas fa-plus"></i>'+(mob?'':' Add')+'</button>':'')+'</div><div style="display:flex;flex-direction:column;gap:10px">'+lh+'</div>'}
+function showAddPol(){openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Add Policy</h3><div style="margin-bottom:12px"><label class="label">Title</label><input class="input" id="pT" placeholder="Title"></div><div style="margin-bottom:16px"><label class="label">Content</label><textarea class="input" id="pC" rows="5" placeholder="Details..." style="resize:vertical"></textarea></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="addPol()"><i class="fas fa-save"></i> Save</button></div>')}
+function addPol(){var t=document.getElementById('pT').value.trim(),c=document.getElementById('pC').value.trim();if(!t||!c){showToast('Fill all fields','warning');return}APP.policies.push({id:genId(),title:t,content:c,date:getTodayStr()});pushRemoteData();closeModal();showToast('Added','success');renderApp()}
+function showEdPol(id){var p=APP.policies.find(function(x){return x.id===id});if(!p)return;openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Edit Policy</h3><div style="margin-bottom:12px"><label class="label">Title</label><input class="input" id="pT" value="'+p.title+'"></div><div style="margin-bottom:16px"><label class="label">Content</label><textarea class="input" id="pC" rows="5" style="resize:vertical">'+p.content+'</textarea></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="svPol(\''+id+'\')"><i class="fas fa-save"></i> Save</button></div>')}
+function svPol(id){var p=APP.policies.find(function(x){return x.id===id});if(!p)return;p.title=document.getElementById('pT').value.trim();p.content=document.getElementById('pC').value.trim();p.date=getTodayStr();pushRemoteData();closeModal();showToast('Updated','success');renderApp()}
+function delPol(id){APP.policies=APP.policies.filter(function(p){return p.id!==id});pushRemoteData();showToast('Deleted','info');renderApp()}
+
+/* ===== SETTINGS ===== */
+function renderSettings(){
+    var mob=isMobileView();
+    var dh=APP.config.workDays.map(function(d){return '<label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg);border-radius:8px;cursor:pointer;border:1px solid '+(APP.config.workDays.indexOf(d)>=0?'var(--accent)':'var(--border')+'"><input type="checkbox" class="wDC" value="'+d+'"'+(APP.config.workDays.indexOf(d)>=0?' checked':'')+' style="accent-color:var(--accent)"><span style="font-size:12px;font-weight:600">'+d+'</span></label>';}).join('');
+    return '<div style="margin-bottom:16px"><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Settings</h2></div><div style="display:grid;grid-template-columns:'+(mob?'1fr':'1fr 1fr')+';gap:14px;margin-bottom:18px"><div class="card"><h3 style="font-size:13px;font-weight:700;margin-bottom:14px"><i class="fas fa-building" style="color:var(--accent);margin-right:6px"></i>Company</h3><div><label class="label">Name</label><input class="input" id="sCN" value="'+APP.config.companyName+'"></div><div style="margin-top:10px"><label class="label">Company Logo</label><input type="file" accept="image/*" onchange="uploadLogo(this)" class="input"></div><div style="margin-top:8px">'+(APP.config.logo?'<img src="'+APP.config.logo+'" style="max-width:120px;max-height:60px;border-radius:6px">':'')+'</div></div><div class="card"><h3 style="font-size:13px;font-weight:700;margin-bottom:14px"><i class="fas fa-clock" style="color:var(--accent);margin-right:6px"></i>Thresholds</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label class="label">Late After</label><input class="input" id="sLT" type="time" value="'+APP.config.lateTime+'"></div><div><label class="label">Early Before</label><input class="input" id="sET" type="time" value="'+APP.config.earlyTime+'"></div></div></div><div class="card"><h3 style="font-size:13px;font-weight:700;margin-bottom:14px"><i class="fas fa-palette" style="color:var(--info);margin-right:6px"></i>Appearance</h3><div style="margin-bottom:12px"><label class="label">Theme</label><select class="input" id="sThm"><option value="dark"'+(APP.config.theme==='dark'?' selected':'')+'>Dark Mode</option><option value="light"'+(APP.config.theme==='light'?' selected':'')+'>Light Mode</option></select></div><div><label class="label">Clock Position</label><select class="input" id="sClk"><option value="tr"'+(APP.config.clockPos==='tr'?' selected':'')+'>Top Right</option><option value="tl"'+(APP.config.clockPos==='tl'?' selected':'')+'>Top Left</option><option value="br"'+(APP.config.clockPos==='br'?' selected':'')+'>Bottom Right</option><option value="bl"'+(APP.config.clockPos==='bl'?' selected':'')+'>Bottom Left</option></select></div><p style="font-size:10px;color:var(--muted);margin-top:6px"><i class="fas fa-info-circle"></i> Only admins can drag or move the clock.</p></div><div class="card" style="grid-column:'+(mob?'1':'span 2')+'"><h3 style="font-size:13px;font-weight:700;margin-bottom:14px"><i class="fas fa-calendar-week" style="color:var(--accent);margin-right:6px"></i>Working Days</h3><div style="display:flex;gap:7px;flex-wrap:wrap">'+dh+'</div></div></div><div class="card" style="margin-bottom:12px"><h3 style="font-size:13px;font-weight:700;margin-bottom:10px">Leave Policy</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label class="label">Casual leave (days per year)</label><input class="input" id="sCas" type="number" min="0" value="'+(APP.config.casualPerYear||10)+'"></div><div><label class="label">Sick leave (days per year)</label><input class="input" id="sSick" type="number" min="0" value="'+(APP.config.sickPerYear||10)+'"></div></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="svSet()"><i class="fas fa-save"></i> Save</button><button class="btn btn-danger" onclick="confirmReset()"><i class="fas fa-exclamation-triangle"></i> Reset All Data</button></div>'}
+function svSet(){
+    APP.config.companyName=document.getElementById('sCN').value.trim()||APP.config.companyName;
+    APP.config.lateTime=document.getElementById('sLT').value||'09:30';
+    APP.config.earlyTime=document.getElementById('sET').value||'18:30';
+    APP.config.workDays=Array.from(document.querySelectorAll('.wDC:checked')).map(function(c){return c.value});
+    APP.config.theme = document.getElementById('sThm').value;
+    APP.config.clockPos = document.getElementById('sClk').value;
+    var yl = parseFloat((document.getElementById('sYL')||{}).value||APP.config.yearlyLeave||14);
+    APP.config.yearlyLeave = isNaN(yl)?(APP.config.yearlyLeave||14):yl;
+    var cs = parseFloat((document.getElementById('sCas')||{}).value||APP.config.casualPerYear||0);
+    var sk = parseFloat((document.getElementById('sSick')||{}).value||APP.config.sickPerYear||0);
+    APP.config.casualPerYear = isNaN(cs)?(APP.config.casualPerYear||0):cs;
+    APP.config.sickPerYear = isNaN(sk)?(APP.config.sickPerYear||0):sk;
+    applyTheme();
+    pushRemoteData();
+    showToast('Saved','success');
+    renderApp();
+}
+
+function uploadLogo(inp){
+    var f = inp.files && inp.files[0]; if(!f) return; var r=new FileReader(); r.onload=function(){ APP.config.logo = r.result; pushRemoteData(); showToast('Logo uploaded','success'); renderApp(); }; r.readAsDataURL(f);
+}
+function confirmReset(){openModal('<div style="text-align:center;margin-bottom:16px"><h3 style="font-size:17px;font-weight:800;margin-bottom:4px">Reset Everything?</h3><p style="color:var(--muted);font-size:12px">Permanently deletes ALL data.</p></div><div style="display:flex;gap:8px;justify-content:center"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-danger" onclick="doReset()"><i class="fas fa-radiation"></i> Destroy All</button></div>')}
+function doReset(){
+    APP.users=[{id:'admin_1',username:'amkadvisory',password:'amk123',name:'AMK Admin',role:'admin',email:'admin@amkadvisory.com',phone:'',department:'Management',designation:'Managing Director',joinDate:'2024-01-01',status:'active',gender:'',address:'',dob:'',location:null}];
+    APP.attendance=[];
+    APP.leaves=[];
+    APP.announcements=[];
+    APP.policies=[];
+    APP.requests=[];
+    APP.holidays=getDefaultHolidays();
+    APP.config={companyName:'AMK Advisory',lateTime:'09:30',earlyTime:'18:30',workDays:['Sat','Sun','Mon','Tue','Wed','Thu','Fri'],theme:'dark',clockPos:'br'};
+    pushRemoteData();
+    clearSession();
+    APP.currentUser=null;
+    closeModal();
+    showToast('Wiped clean','warning');
+    renderApp();
+}
+function getDefaultHolidays(){
+    return [
+        {id:'bb1',date:'2024-01-01',name:'New Year Day',type:'bb'},{id:'bb2',date:'2024-02-21',name:'Shab-e-Meraj-un-Nabi',type:'bb'},
+        {id:'bb3',date:'2024-03-26',name:'Shab-e-Barat',type:'bb'},{id:'bb4',date:'2024-03-27',name:'Birthday of Bangabandhu',type:'bb'},
+        {id:'bb5',date:'2024-04-02',name:'Shab-e-Juma-ul-Wida',type:'bb'},{id:'bb6',date:'2024-04-14',name:'Bengali New Year (Pohela Boishakh)',type:'bb'},
+        {id:'bb7',date:'2024-05-01',name:'May Day',type:'bb'},{id:'bb8',date:'2024-06-07',name:'Eid-ul-Fitr',type:'bb'},
+        {id:'bb9',date:'2024-06-16',name:'Eid-ul-Azha',type:'bb'},{id:'bb10',date:'2024-08-15',name:'National Mourning Day',type:'bb'},
+        {id:'bb11',date:'2024-12-16',name:'Victory Day',type:'bb'},{id:'bb12',date:'2024-12-25',name:'Christmas Day',type:'bb'}
+    ];
+}
+
+/* ===== LIVE UPDATES (SSE) ===== */
+function initSSE(){
+    try{
+        if(typeof EventSource==='undefined')return;
+        var es=new EventSource(API_BASE+'/events');
+        es.addEventListener('open',function(){console.log('SSE connected')});
+        es.addEventListener('error',function(e){console.warn('SSE error',e);es.close();setTimeout(initSSE,5000)});
+        es.addEventListener('update',function(e){
+            try{console.log('Live update received',e.data);fetchRemoteData().then(function(){renderApp();showToast('Live update','info')});}catch(err){console.error(err)}
+        });
+    }catch(e){console.error('SSE init failed',e)}
+}
+
+/* ===== EMPLOYEE PROFILE ===== */
+function showEditProfile(){var u=APP.currentUser;if(!u)return;openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Edit My Profile</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Name</label><input class="input" id="pNm" value="'+u.name+'"></div><div><label class="label">Email</label><input class="input" id="pEm" value="'+(u.email||'')+'"></div><div><label class="label">Phone</label><input class="input" id="pPh" value="'+(u.phone||'')+'"></div><div><label class="label">Gender</label><select class="input" id="pGn">'+['Male','Female','Other'].map(function(g){return '<option'+(u.gender===g?' selected':'')+'>'+g+'</option>';}).join('')+'</select></div><div><label class="label">DOB</label><input class="input" id="pDb" type="date" value="'+(u.dob||'')+'"></div><div><label class="label">Address</label><input class="input" id="pAd" value="'+(u.address||'')+'"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Casual quota (override)</label><input class="input" id="pCQ" type="number" min="0" value="'+(u.casualQuota!=null?u.casualQuota:'')+'"></div><div><label class="label">Sick quota (override)</label><input class="input" id="pSQ" type="number" min="0" value="'+(u.sickQuota!=null?u.sickQuota:'')+'"></div></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="svPr()"><i class="fas fa-save"></i> Save</button></div>')}
+function svPr(){var u=APP.currentUser;if(!u)return;u.name=document.getElementById('pNm').value.trim()||u.name;u.email=document.getElementById('pEm').value.trim();u.phone=document.getElementById('pPh').value.trim();u.gender=document.getElementById('pGn').value;u.dob=document.getElementById('pDb').value;u.address=document.getElementById('pAd').value.trim();var cq=(document.getElementById('pCQ')||{}).value, sq=(document.getElementById('pSQ')||{}).value;u.casualQuota = cq!==''?parseFloat(cq): (u.casualQuota!=null?u.casualQuota:null);u.sickQuota = sq!==''?parseFloat(sq): (u.sickQuota!=null?u.sickQuota:null);var i=APP.users.findIndex(function(x){return x.id===u.id});if(i>=0)APP.users[i]=u;pushRemoteData();closeModal();showToast('Profile updated','success');renderApp()}
+
+/* ===== INIT ===== */
+fetchRemoteData().then(function(ok){
+    if(ok) showToast('Connected to Host Database','info');
+    else showToast('Running Offline / Cannot connect to Host DB','warning');
+    initSSE();
+    renderApp();
+}).catch(function(e){
+    console.error(e);
+    renderApp();
+    showToast('System Error - Running Offline','warning');
+});
+
+var rT=null;
+window.addEventListener('resize',function(){clearTimeout(rT);rT=setTimeout(function(){if(APP.currentUser)renderApp()},200)});
+</script>
+</body>
+</html>

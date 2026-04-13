@@ -502,6 +502,7 @@ function doLoginWithUser(user){
 
 var locReminderInterval = null;
 function startLocationReminder() {
+    if(isAdmin()) return;
     if(locReminderInterval) clearInterval(locReminderInterval);
     locReminderInterval = setInterval(async function() {
         if (!APP.currentUser) { stopLocationReminder(); return; }
@@ -769,11 +770,12 @@ function renderRequests(){
             // other request types (late/early)
             var canAct=isAdminOrHR();
             var isResolved = r.status !== 'pending';
+            body = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><strong>'+(u?u.name:'--')+'</strong> — '+(r.type==='late'?'Late Arrival':'Early Departure')+'</div>';
             if(canAct){
-                body = r.remark?'<div style="margin-bottom:8px">'+r.remark+'</div>':'';
+                if(r.remark) body += '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Reason: '+r.remark+'</div>';
                 body += (r.status==='pending'?'<div style="display:flex;gap:8px"><button class="btn btn-success btn-sm" onclick="rrReq(\''+r.id+'\',\'approved\')">Approve</button><button class="btn btn-danger btn-sm" onclick="rrReq(\''+r.id+'\',\'rejected\')">Reject</button></div>':'<button class="btn btn-secondary btn-sm" onclick="dismissRequest(\''+r.id+'\')">Dismiss</button>');
             } else {
-                body = r.remark || '';
+                if(r.remark) body += '<div style="font-size:12px;color:var(--muted)">Reason: '+r.remark+'</div>';
             }
         }
         return '<div class="card" style="border-left:3px solid '+bc+'"><div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:8px"><div style="flex:1;min-width:0">'+body+'<div style="display:flex;gap:12px;font-size:10px;color:var(--muted);margin-top:8px"><span>'+ (r.createdAt? (new Date(r.createdAt)).toLocaleString() : '') +'</span>'+ (r.location?('<span>'+renderLocationField(r)+'</span>'):'') +'</div></div></div></div>';
@@ -885,6 +887,7 @@ function svSet(){
     APP.config.workDays=Array.from(document.querySelectorAll('.wDC:checked')).map(function(c){return c.value});
     APP.config.theme = document.getElementById('sThm').value;
     APP.config.clockPos = document.getElementById('sClk').value;
+    APP.config.qrKey = (document.getElementById('sQRK')||{}).value || APP.config.qrKey;
     APP.config.qrKey = (document.getElementById('sQRK')||{}).value || APP.config.qrKey;
     var yl = parseFloat((document.getElementById('sYL')||{}).value||APP.config.yearlyLeave||14);
     APP.config.yearlyLeave = isNaN(yl)?(APP.config.yearlyLeave||14):yl;

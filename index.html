@@ -6,6 +6,7 @@
 <title>AMK Advisory — HR Management</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://unpkg.com/html5-qrcode"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#050c1e;--surface:#0a1428;--card:#101d34;--card2:#152545;--border:#1b2e50;--accent:#e8a308;--adim:rgba(232,163,8,.12);--suc:#0d9488;--dan:#ef4444;--warn:#f59e0b;--info:#0ea5e9;--text:#e2e8f0;--muted:#6b7fa0}
@@ -120,7 +121,8 @@ var APP = {
         yearlyLeave: 14,
         casualPerYear: 10,
         sickPerYear: 10,
-        logo: null
+        logo: null,
+        qrKey: 'AMK_OFFICE_KEY_' + Math.random().toString(36).substr(2, 9)
     },
     isSyncing:false, lastSync:null, isOffline:false
 };
@@ -161,9 +163,9 @@ function pushRemoteData(){
     .catch(function(e){console.error(e);APP.isSyncing=false;APP.isOffline=true;updateSyncIndicator();return false});
 }
 function updateSyncIndicator(){var el=document.getElementById('syncIndicator');if(!el)return;if(APP.isSyncing){el.innerHTML='<i class="fas fa-spinner fa-spin" style="color:var(--warn)"></i> Syncing...';el.style.borderColor='var(--warn)'}else if(APP.isOffline){el.innerHTML='<i class="fas fa-exclamation-circle" style="color:var(--dan)"></i> Offline';el.style.borderColor='var(--dan)'}else{var t=APP.lastSync?APP.lastSync.toLocaleTimeString():'--:--';el.innerHTML='<span class="sync-dot"></span> Host DB — '+t;el.style.borderColor='var(--border)'}}
-function saveSession(){if(APP.currentUser)sessionStorage.setItem('amk_session',JSON.stringify(APP.currentUser))}
-function restoreSession(){try{var s=sessionStorage.getItem('amk_session');if(s)APP.currentUser=JSON.parse(s)}catch(e){}}
-function clearSession(){sessionStorage.removeItem('amk_session')}
+function saveSession(){if(APP.currentUser){localStorage.setItem('amk_session',JSON.stringify(APP.currentUser));localStorage.setItem('amk_last_user_id',APP.currentUser.id)}}
+function restoreSession(){try{var s=localStorage.getItem('amk_session');if(s)APP.currentUser=JSON.parse(s)}catch(e){}}
+function clearSession(){localStorage.removeItem('amk_session')}
 
 // --- Announcements: unread tracking and helpers ---
 function _annKey(){ return APP.currentUser?('amk_ann_seen_'+APP.currentUser.id):null }
@@ -384,7 +386,7 @@ function renderProfile(){
 
 /* ===== LOGIN ===== */
 function renderLogin(){
-    document.getElementById('rootEl').innerHTML='<div style="min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden"><div style="position:absolute;top:-160px;right:-160px;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(232,163,8,.04),transparent 70%)"></div><div style="position:absolute;bottom:-100px;left:-100px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(13,148,136,.03),transparent 70%)"></div><div style="width:100%;max-width:380px;position:relative;z-index:1"><div style="text-align:center;margin-bottom:28px"><div style="width:58px;height:58px;border-radius:14px;background:linear-gradient(135deg,var(--accent),#c98b06);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px"><span style="font-weight:900;font-size:22px;color:#000">AMK</span></div><h1 class="fd" style="font-size:28px;font-weight:900">'+APP.config.companyName+'</h1><p style="color:var(--muted);font-size:12.5px;margin-top:3px">Human Resource Management System</p></div><div class="card" style="padding:24px"><div style="margin-bottom:16px"><label class="label">Username</label><input class="input" id="loginUsername" placeholder="Enter your username" autocomplete="username" onkeydown="if(event.key===\'Enter\')document.getElementById(\'loginPassword\').focus()"></div><div style="margin-bottom:20px"><label class="label">Password</label><input class="input" id="loginPassword" type="password" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()"></div><button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px" onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Sign In</button></div><p style="text-align:center;margin-top:16px;font-size:10.5px;color:var(--muted)">Contact your administrator for login credentials</p></div></div>';
+    document.getElementById('rootEl').innerHTML='<div style="min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden"><div style="position:absolute;top:-160px;right:-160px;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(232,163,8,.04),transparent 70%)"></div><div style="position:absolute;bottom:-100px;left:-100px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(13,148,136,.03),transparent 70%)"></div><div style="width:100%;max-width:380px;position:relative;z-index:1"><div style="text-align:center;margin-bottom:28px"><div style="width:58px;height:58px;border-radius:14px;background:linear-gradient(135deg,var(--accent),#c98b06);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px"><span style="font-weight:900;font-size:22px;color:#000">AMK</span></div><h1 class="fd" style="font-size:28px;font-weight:900">'+APP.config.companyName+'</h1><p style="color:var(--muted);font-size:12.5px;margin-top:3px">Human Resource Management System</p></div><div class="card" style="padding:24px"><div style="margin-bottom:16px"><label class="label">Username</label><input class="input" id="loginUsername" placeholder="Enter your username" autocomplete="username" onkeydown="if(event.key===\'Enter\')document.getElementById(\'loginPassword\').focus()"></div><div style="margin-bottom:20px"><label class="label">Password</label><input class="input" id="loginPassword" type="password" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()"></div><button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px" onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Sign In</button><div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px"><button class="btn btn-secondary" style="width:100%;justify-content:center" onclick="showQRScanner()"><i class="fas fa-qrcode"></i> Scan QR to Login</button></div></div><p style="text-align:center;margin-top:16px;font-size:10.5px;color:var(--muted)">Contact your administrator for login credentials</p></div></div>';
     setTimeout(function(){var el=document.getElementById('loginUsername');if(el)el.focus()},100);
 }
 
@@ -442,10 +444,58 @@ async function doLogin(){
         if(user.role!=='admin'&&il){showLatePopup(tn);return}
     }
     saveSession();showToast('Welcome, '+user.name.split(' ')[0]+'!','success');renderApp();
-    // If location is still missing for current user, start reminder
-    if (!LAST_LOCATION) {
-        startLocationReminder();
+}
+
+/* ===== QR SCANNER LOGIC ===== */
+var qrScanner = null;
+function showQRScanner(){
+    openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Scan Office QR</h3><div id="reader" style="width:100%;border-radius:12px;overflow:hidden;background:#000"></div><div style="margin-top:16px"><button class="btn btn-secondary" style="width:100%;justify-content:center" onclick="stopQRScanner()">Cancel</button></div>');
+    qrScanner = new Html5Qrcode("reader");
+    qrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onQRCodeSuccess);
+}
+function stopQRScanner(){ if(qrScanner){ qrScanner.stop().then(function(){ closeModal(); }).catch(function(){ closeModal(); }); } else { closeModal(); } }
+async function onQRCodeSuccess(decodedText) {
+    if(decodedText !== APP.config.qrKey) { showToast('Invalid QR Code', 'error'); return; }
+    stopQRScanner();
+    
+    var targetUser = APP.currentUser;
+    if(!targetUser) {
+        var lastId = localStorage.getItem('amk_last_user_id');
+        if(lastId) targetUser = findUser(lastId);
     }
+
+    if(!targetUser) {
+        showToast('Please login manually once to link this device.', 'warning');
+        return;
+    }
+
+    showToast('QR Verified. Registering attendance...', 'info');
+    await handleQRAutoRegistration(targetUser);
+}
+async function handleQRAutoRegistration(user) {
+    var synced = await fetchRemoteData();
+    APP.currentUser = user;
+    APP.currentPage = 'dashboard';
+    
+    // Auto-fetch location
+    var loc = await getLocationPlace();
+    user.location = loc;
+    
+    // Proceed with login logic (it will auto-record attendance if not already done)
+    doLoginWithUser(user); 
+}
+function doLoginWithUser(user){
+    var today = getTodayStr();
+    var rec = APP.attendance.find(function(a){return a.userId===user.id&&a.date===today});
+    if(!rec){
+        var tn=getNowTime(),il=tn>APP.config.lateTime;
+        var locName=(LAST_LOCATION&&LAST_LOCATION.name)||user.location||'N/A';
+        APP.attendance.push({id:user.id+'_'+today,userId:user.id,date:today,loginTime:tn,status:'active',late:il,location:locName,locationLink:LAST_LOCATION?LAST_LOCATION.link:null});
+        pushRemoteData();
+    }
+    saveSession();
+    renderApp();
+    showToast('Automatic Login Success!', 'success');
 }
 
 var locReminderInterval = null;
@@ -833,6 +883,7 @@ function svSet(){
     APP.config.workDays=Array.from(document.querySelectorAll('.wDC:checked')).map(function(c){return c.value});
     APP.config.theme = document.getElementById('sThm').value;
     APP.config.clockPos = document.getElementById('sClk').value;
+    APP.config.qrKey = (document.getElementById('sQRK')||{}).value || APP.config.qrKey;
     var yl = parseFloat((document.getElementById('sYL')||{}).value||APP.config.yearlyLeave||14);
     APP.config.yearlyLeave = isNaN(yl)?(APP.config.yearlyLeave||14):yl;
     var cs = parseFloat((document.getElementById('sCas')||{}).value||APP.config.casualPerYear||0);
@@ -857,7 +908,7 @@ function doReset(){
     APP.policies=[];
     APP.requests=[];
     APP.holidays=getDefaultHolidays();
-    APP.config={companyName:'AMK Advisory',lateTime:'09:30',earlyTime:'18:30',workDays:['Sat','Sun','Mon','Tue','Wed','Thu','Fri'],theme:'dark',clockPos:'br'};
+    APP.config={companyName:'AMK Advisory',lateTime:'09:30',earlyTime:'18:30',workDays:['Sat','Sun','Mon','Tue','Wed','Thu','Fri'],theme:'dark',clockPos:'br', qrKey: 'AMK_OFFICE_KEY_' + Math.random().toString(36).substr(2, 9)};
     pushRemoteData();
     clearSession();
     APP.currentUser=null;

@@ -70,7 +70,7 @@ tbody tr:hover td{background:rgba(232,163,8,.02)}
 .sync-indicator{position:fixed;bottom:20px;left:270px;background:var(--card2);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px;z-index:30}
 .sync-dot{width:6px;height:6px;border-radius:50%;background:var(--suc);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.clock-widget{position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 14px;display:flex;flex-direction:column;align-items:flex-end;gap:2px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:45;transition:all 0.3s ease; cursor: grab;}
+.clock-widget{position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 14px;display:flex;flex-direction:column;align-items:flex-end;gap:2px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:220;transition:all 0.3s ease; cursor: grab;}
 .clock-widget:active { cursor: grabbing; }
 .clock-time{font-size:16px;font-weight:800;color:var(--accent);letter-spacing:1px;font-variant-numeric:tabular-nums}
 .clock-date{font-size:10px;color:var(--muted);font-weight:500}
@@ -82,6 +82,12 @@ tbody tr:hover td{background:rgba(232,163,8,.02)}
 .holiday-banner i{font-size:20px;color:var(--warn)}
 @media(max-width:1024px){.sidebar{transform:translateX(-260px)}.sidebar.open{transform:translateX(0)}.main-content{margin-left:0}}
 @media(max-width:768px){.sidebar{display:none!important}.bottom-nav{display:flex!important}.mobile-header{display:flex!important}.main-content{padding-bottom:70px!important}.page-inner{padding:60px 14px 24px!important}.card{padding:14px;border-radius:12px}.btn{padding:7px 14px;font-size:11.5px}.btn-sm{padding:4px 8px;font-size:10px}thead th,tbody td{padding:8px;font-size:10.5px}.modal-box{border-radius:14px;padding:18px;max-height:90vh}.modal-overlay{padding:10px;align-items:flex-end}.sync-indicator{bottom:80px;left:14px}.clock-widget{top:52px;right:10px;padding:6px 10px}.clock-time{font-size:13px}.clock-date{font-size:9px}}
+
+@media(max-width:768px){
+    /* allow sidebar drawer to open on mobile */
+    .sidebar{display:none!important}
+    .sidebar.open{display:flex!important;transform:translateX(0);z-index:120;padding-top:52px}
+}
 </style>
 </head>
 <body>
@@ -135,7 +141,10 @@ function fetchRemoteData(){
         APP.announcements=store.announcements||[];APP.policies=store.policies||[];APP.requests=store.requests||[];
         APP.holidays=store.holidays||[];
         if(store.config)APP.config=Object.assign(APP.config, store.config);
-        APP.isSyncing=false;APP.isOffline=false;APP.lastSync=new Date();updateSyncIndicator();applyTheme();restoreSession();return true;
+        APP.isSyncing=false;APP.isOffline=false;APP.lastSync=new Date();updateSyncIndicator();applyTheme();restoreSession();
+        // update announcement badge and notify if there are unread
+        try{ setTimeout(function(){ var c=getUnreadAnnouncementsCount(); if(APP.currentUser && c>0){ showToast('You have '+c+' new announcement(s)','info'); } },200); }catch(e){}
+        return true;
     }).catch(function(e){showToast(e.message, 'error'); APP.isSyncing=false;APP.isOffline=true;updateSyncIndicator();applyTheme();restoreSession();return false});
 }
 function pushRemoteData(){
@@ -156,6 +165,18 @@ function saveSession(){if(APP.currentUser)sessionStorage.setItem('amk_session',J
 function restoreSession(){try{var s=sessionStorage.getItem('amk_session');if(s)APP.currentUser=JSON.parse(s)}catch(e){}}
 function clearSession(){sessionStorage.removeItem('amk_session')}
 
+// --- Announcements: unread tracking and helpers ---
+function _annKey(){ return APP.currentUser?('amk_ann_seen_'+APP.currentUser.id):null }
+function getAnnLastSeen(){ try{ var k=_annKey(); if(!k) return null; return localStorage.getItem(k); }catch(e){return null} }
+function setAnnLastSeen(ts){ try{ var k=_annKey(); if(!k) return; localStorage.setItem(k, ts); }catch(e){} }
+function getUnreadAnnouncementsCount(){ if(!APP.currentUser) return 0; var last = getAnnLastSeen(); var cnt = 0; try{ APP.announcements.forEach(function(a){ var t = a.createdAt || (a.date? (new Date(a.date)).toISOString() : null); if(!t) return; if(last && new Date(t) <= new Date(last)) return; // already seen
+    // target filtering
+    if(a.targetIds && a.targetIds.length>0){ if(a.targetIds.indexOf(APP.currentUser.id)===-1) return; }
+    cnt++; }); }catch(e){} updateAnnBadge(cnt); return cnt; }
+function updateAnnBadge(cnt){ try{ var el=document.getElementById('annBellBadge'); if(!el) return; if(typeof cnt==='undefined') cnt=getUnreadAnnouncementsCount(); if(cnt>0){ el.style.display='inline-block'; el.textContent=cnt; } else { el.style.display='none'; el.textContent=''; } }catch(e){} }
+function markAnnouncementsSeen(){ try{ setAnnLastSeen(new Date().toISOString()); updateAnnBadge(0); }catch(e){} }
+
+
 function genId(){return 'id_'+Date.now()+'_'+Math.random().toString(36).substr(2,5)}
 function getTodayStr(){return new Date().toISOString().split('T')[0]}
 function getNowTime(){var d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
@@ -163,9 +184,18 @@ function findUser(id){return APP.users.find(function(u){return u.id===id})}
 function renderLocationField(item){
     var name = item.location || item.locationName || item.locationLink || '';
     if(item.locationLink){
-        return '<a href="'+item.locationLink+'" target="_blank" style="color:var(--info);text-decoration:underline">'+(name||'View')+'</a>';
+        return '<a href="'+item.locationLink+'" target="_blank" style="color:var(--info);text-decoration:underline">'+(name||'View')+'</a> <button class="btn btn-sm" style="margin-left:6px;padding:6px" onclick="copyToClipboard(\''+item.locationLink+'\')"><i class="fas fa-map-pin"></i></button>';
     }
     return name||'--';
+}
+
+function copyToClipboard(text){
+    if(!text) return; 
+    if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){ showToast('Location link copied','success') }).catch(function(){ showToast('Copy failed','error') });
+    } else {
+        try{ var ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); showToast('Location link copied','success') }catch(e){ showToast('Copy failed','error') }
+    }
 }
 function showUserOverview(userId){
     var u=findUser(userId);if(!u){showToast('User not found','error');return}
@@ -246,13 +276,14 @@ function getLocationPlace(){
 function navigateTo(p){APP.currentPage=p;closeMobileMenu();renderApp()}
 function closeMobileMenu(){var s=document.querySelector('.sidebar');if(s)s.classList.remove('open');var m=document.getElementById('mobileMoreMenu');if(m)m.classList.add('hidden')}
 function toggleMobileMenu(){var m=document.getElementById('mobileMoreMenu');if(m)m.classList.toggle('hidden')}
+function toggleSidebarMobile(){var s=document.querySelector('.sidebar');if(!s){return}if(s.classList.contains('open')){s.classList.remove('open')}else{s.classList.add('open');var m=document.getElementById('mobileMoreMenu');if(m) m.classList.add('hidden')}}
 
 function renderApp(){
     if(!APP.currentUser){renderLogin();return}
     var mob=isMobileView(),pc=APP.requests.filter(function(r){return r.status==='pending'}).length;
     var ni=getNavItems();
     var sh=ni.map(function(n){var b=(n.key==='requests'&&pc)?'<span style="margin-left:auto;background:var(--dan);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px">'+pc+'</span>':'';return '<div class="nav-item '+(APP.currentPage===n.key?'active':'')+'" onclick="navigateTo(\''+n.key+'\')"><i class="fas '+n.icon+'"></i><span>'+n.label+'</span>'+b+'</div>'}).join('');
-    var bK=['dashboard','attendance','leave-app','requests'],bL=['Home','Attend.','Leave','Reqs'],bI=['fa-th-large','fa-clock','fa-calendar-alt','fa-hourglass-half'],bh='';
+    var bK=['dashboard','attendance','leave-app'],bL=['Home','Attend.','Leave'],bI=['fa-th-large','fa-clock','fa-calendar-alt'],bh='';
     for(var i=0;i<bK.length;i++){var bb=(bK[i]==='requests'&&pc)?'<span class="bnav-badge">'+pc+'</span>':'';bh+='<div class="bnav-item '+(APP.currentPage===bK[i]?'active':'')+'" onclick="navigateTo(\''+bK[i]+'\')"><i class="fas '+bI[i]+'"></i><span>'+bL[i]+'</span>'+bb+'</div>'}
     bh+='<div class="bnav-item" onclick="toggleMobileMenu()"><i class="fas fa-ellipsis-h"></i><span>More</span></div>';
     var mi=ni.filter(function(n){return bK.indexOf(n.key)===-1});
@@ -264,11 +295,11 @@ function renderApp(){
     var html='';
     var companyLogoHtml = APP.config.logo?('<img src="'+APP.config.logo+'" style="width:38px;height:38px;border-radius:8px;object-fit:cover">'):'<div style="width:38px;height:38px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#c98b06);display:flex;align-items:center;justify-content:center;font-weight:900;color:#000;font-size:14px">AM</div>';
     if(mob){
-        html+='<div class="mobile-header"><div style="width:32px;height:32px;border-radius:8px;overflow:hidden;flex-shrink:0">'+(APP.config.logo?'<img src="'+APP.config.logo+'" style="width:100%;height:100%;object-fit:cover">':'<div style="width:32px;height:32px;background:linear-gradient(135deg,var(--accent),#c98b06);display:flex;align-items:center;justify-content:center;font-weight:900;color:#000;font-size:12px">AM</div>')+'</div><h2>'+APP.config.companyName+'</h2><div class="mobile-more-btn" onclick="toggleMobileMenu()"><i class="fas fa-ellipsis-v"></i></div></div>';
+        html+='<div class="mobile-header"><div style="width:32px;height:32px;border-radius:8px;overflow:hidden;flex-shrink:0">'+(APP.config.logo?'<img src="'+APP.config.logo+'" style="width:100%;height:100%;object-fit:cover">':'<div style="width:32px;height:32px;background:linear-gradient(135deg,var(--accent),#c98b06);display:flex;align-items:center;justify-content:center;font-weight:900;color:#000;font-size:12px">AM</div>')+'</div><h2>'+APP.config.companyName+'</h2><div style="margin-left:auto;display:flex;gap:8px;align-items:center"><button class="mobile-more-btn" onclick="navigateTo(\'announcements\');markAnnouncementsSeen()" title="Announcements" style="position:relative"><i class="fas fa-bell"></i><span id="annBellBadge" style="position:absolute;top:-6px;right:-6px;background:var(--dan);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;display:none"></span></button><div class="mobile-more-btn" onclick="toggleMobileMenu()"><i class="fas fa-ellipsis-v"></i></div></div></div>';
         html+='<div class="bottom-nav">'+bh+'</div>';
         html+='<div id="mobileMoreMenu" class="hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:100;background:rgba(0,0,0,.5)" onclick="if(event.target===this)closeMobileMenu()"><div style="position:absolute;top:52px;right:10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;width:220px;max-height:70vh;overflow-y:auto;padding:8px 0;box-shadow:0 10px 40px rgba(0,0,0,.5)">'+mh+lo+'</div></div>';
     }else{
-        html+='<aside class="sidebar"><div style="padding:20px 16px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:10px"><div style="width:38px;height:38px;border-radius:10px;overflow:hidden">'+companyLogoHtml+'</div><div><div style="font-weight:800;font-size:14px">'+APP.config.companyName+'</div><div style="font-size:10px;color:var(--muted)">HR Management</div></div></div></div><nav style="flex:1;overflow-y:auto;padding:6px 0">'+sh+'</nav><div style="padding:12px 16px;border-top:1px solid var(--border)"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:30px;height:30px;border-radius:7px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;font-size:11px">'+ini+'</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+APP.currentUser.name+'</div><div style="font-size:10px;color:var(--muted);text-transform:capitalize">'+APP.currentUser.role+'</div></div></div>'+lo+'</div></aside>';
+        html+='<aside class="sidebar"><div style="padding:20px 16px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:10px"><div style="width:38px;height:38px;border-radius:10px;overflow:hidden">'+companyLogoHtml+'</div><div><div style="font-weight:800;font-size:14px">'+APP.config.companyName+'</div><div style="font-size:10px;color:var(--muted)">HR Management</div></div><div style="margin-left:auto;display:flex;align-items:center;gap:8px"><button class="btn btn-sm" onclick="navigateTo(\'announcements\');markAnnouncementsSeen()" title="Announcements" style="position:relative"><i class="fas fa-bell"></i><span id="annBellBadge" style="position:absolute;top:-6px;right:-6px;background:var(--dan);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;display:none"></span></button></div></div></div><nav style="flex:1;overflow-y:auto;padding:6px 0">'+sh+'</nav><div style="padding:12px 16px;border-top:1px solid var(--border)"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:30px;height:30px;border-radius:7px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;font-size:11px">'+ini+'</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+APP.currentUser.name+'</div><div style="font-size:10px;color:var(--muted);text-transform:capitalize">'+APP.currentUser.role+'</div></div></div>'+lo+'</div></aside>';
     }
     var clockClass = 'clock-pos-' + APP.config.clockPos;
     html+='<div class="clock-widget '+clockClass+'" id="clockWidget"><span class="clock-time" id="clockTime">--:--:--</span><span class="clock-date" id="clockDate">---</span></div>';
@@ -284,12 +315,26 @@ function startClock(){
 function initDrag() {
     var el = document.getElementById('clockWidget');
     if(!el) return;
-    // Only admin can drag/move the clock
-    if(!isAdmin()){ el.style.cursor='default'; return; }
+    // Only admin can drag/move the clock and disable dragging on mobile
+    if(!isAdmin() || isMobileView()){ el.style.cursor='default'; return; }
     var isDown = false, offset = [0,0];
     el.addEventListener('mousedown', function(e) { isDown = true; offset = [el.offsetLeft - e.clientX, el.offsetTop - e.clientY]; });
     document.addEventListener('mouseup', function() { if(isDown){ isDown = false; } });
-    document.addEventListener('mousemove', function(e) { if (isDown) { e.preventDefault(); el.style.left = (e.clientX + offset[0]) + 'px'; el.style.top = (e.clientY + offset[1]) + 'px'; } });
+    document.addEventListener('mousemove', function(e) {
+        if (!isDown) return;
+        e.preventDefault();
+        var newLeft = e.clientX + offset[0];
+        var newTop = e.clientY + offset[1];
+        var pad = 8;
+        var maxLeft = window.innerWidth - el.offsetWidth - pad;
+        var maxTop = window.innerHeight - el.offsetHeight - pad;
+        if (newLeft < pad) newLeft = pad;
+        if (newTop < pad) newTop = pad;
+        if (newLeft > maxLeft) newLeft = maxLeft;
+        if (newTop > maxTop) newTop = maxTop;
+        el.style.left = newLeft + 'px';
+        el.style.top = newTop + 'px';
+    });
 }
 function getNavItems(){
     var items=[{key:'dashboard',icon:'fa-th-large',label:'Dashboard'},{key:'attendance',icon:'fa-clock',label:'Attendance'}];
@@ -298,12 +343,33 @@ function getNavItems(){
     if(isAdmin())items.push({key:'holidays',icon:'fa-calendar-xmark',label:'Holidays'});
     if(!isAdmin())items.push({key:'leave-app',icon:'fa-calendar-alt',label:'Leave Application'});
     if(isAdminOrHR())items.push({key:'leave-mgmt',icon:'fa-calendar-check',label:'Leave Management'});
+    // show requests to admin/hr, and to any user who is assigned as delegate for pending requests
     if(isAdminOrHR()) items.push({key:'requests',icon:'fa-hourglass-half',label:'Pending Requests'});
+    else {
+        var hasDelegatePending = APP.requests.some(function(r){return r.delegateId=== (APP.currentUser?APP.currentUser.id:null) && r.status==='delegate_pending'});
+        if(hasDelegatePending) items.push({key:'requests',icon:'fa-hourglass-half',label:'Pending Requests'});
+    }
     items.push({key:'policies',icon:'fa-file-contract',label:'Policies'});
+    // profile available to all users
+    items.push({key:'profile',icon:'fa-user',label:'Profile'});
+    if(isAdmin()) items.push({key:'profiles',icon:'fa-id-badge',label:'Profiles'});
     if(isAdmin())items.push({key:'settings',icon:'fa-cog',label:'Settings'});
     return items;
 }
-function renderPageContent(){var p={dashboard:renderDashboard,attendance:renderAttendance,announcements:renderAnnouncements,employees:renderEmployees,holidays:renderHolidays,'leave-app':renderLeaveApp,'leave-mgmt':renderLeaveMgmt,requests:renderRequests,policies:renderPolicies,settings:renderSettings};var fn=p[APP.currentPage];return fn?fn():renderDashboard()}
+function renderPageContent(){var p={dashboard:renderDashboard,attendance:renderAttendance,announcements:renderAnnouncements,employees:renderEmployees,holidays:renderHolidays,'leave-app':renderLeaveApp,'leave-mgmt':renderLeaveMgmt,requests:renderRequests,policies:renderPolicies,profile:renderProfile,profiles:renderProfiles,settings:renderSettings};var fn=p[APP.currentPage];return fn?fn():renderDashboard()}
+
+// Profile page renderer
+function renderProfile(){
+    var u = APP.currentUser; if(!u) return renderDashboard();
+    var mob = isMobileView();
+    var familyHtml = (u.family && u.family.length)? u.family.map(function(f){return '<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-weight:700">'+(f.name||'')+'</div><div style="font-size:12px;color:var(--muted)">'+(f.relation?f.relation+' • ':'')+(f.phone||'')+'</div></div>'}).join('') : '<div style="text-align:center;color:var(--muted);padding:14px">No family info</div>';
+    var emergencyHtml = u.emergency?('<div style="font-weight:700">'+(u.emergency.name||'')+'</div><div style="font-size:12px;color:var(--muted)">'+(u.emergency.relation||'')+' • '+(u.emergency.phone||'')+'</div>'):'<div style="text-align:center;color:var(--muted);padding:14px">No emergency contact</div>';
+    var qualHtml = (u.qualification||u.education||u.experienceYears||u.skills)? '<div style="font-weight:700">'+(u.qualification||'')+'</div><div style="font-size:12px;color:var(--muted)">'+(u.education?u.education+' • ':'')+(u.experienceYears? (u.experienceYears+' yrs') : '')+'</div><div style="margin-top:8px;font-size:12px;color:var(--muted)">Skills: '+(Array.isArray(u.skills)?u.skills.join(', '):(u.skills||'--'))+'</div>' : '<div style="text-align:center;color:var(--muted);padding:14px">No qualification info</div>';
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">My Profile</h2><p style="color:var(--muted);font-size:12px;margin-top:6px">Personal, family and emergency contact details</p></div><div><button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showEditProfile()"><i class="fas fa-user-edit"></i>'+(mob?'':' Edit Profile')+'</button></div></div>'+
+        '<div style="display:grid;grid-template-columns:'+(mob?'1fr':'1fr 1fr')+';gap:12px"><div class="card"><h3 style="font-size:13px;font-weight:700;margin-bottom:10px">Personal Information</h3><div style="font-size:14px;font-weight:700">'+(u.name||'')+'</div><div style="font-size:12px;color:var(--muted);margin-top:6px">'+(u.email||'')+'</div><div style="font-size:12px;color:var(--muted);margin-top:6px">'+(u.phone||'')+'</div><div style="font-size:12px;color:var(--muted);margin-top:6px">'+(u.address||'')+'</div></div><div class="card"><h3 style="font-size:13px;font-weight:700;margin-bottom:10px">Emergency Contact</h3>'+emergencyHtml+'</div></div><div style="margin-top:12px" class="card"><h3 style="font-size:13px;font-weight:700;margin-bottom:10px">Family Members</h3>'+familyHtml+'</div>'+
+        '<div style="margin-top:12px" class="card"><h3 style="font-size:13px;font-weight:700;margin-bottom:10px">Qualifications</h3>'+qualHtml+'</div>';
+    return html;
+}
 
 /* ===== LOGIN ===== */
 function renderLogin(){
@@ -409,7 +475,18 @@ function renderAdminAtt(){
 function downloadCSV(){var sm=(document.getElementById('attMS')||{}).value,se=(document.getElementById('attES')||{}).value||'';var d=APP.attendance.filter(function(a){return a.date.startsWith(sm)});if(se)d=d.filter(function(a){return a.userId===se});d.sort(function(a,b){return b.date.localeCompare(a.date)});var c='Employee,Department,Date,Login,Logout,Location,Late,Status\n';d.forEach(function(a){var u=findUser(a.userId);c+='"'+(u?u.name:'')+'","'+(u?u.department:'')+'","'+a.date+'","'+(a.loginTime||'')+'","'+(a.logoutTime||'')+'","'+(a.location||'')+'","'+(a.late?'Yes':'No')+'","'+a.status+'"\n'});var b=new Blob([c],{type:'text/csv'});var u=URL.createObjectURL(b);var a=document.createElement('a');a.href=u;a.download='AMK_Attendance_'+sm+'.csv';a.click();URL.revokeObjectURL(u);showToast('Downloaded','success')}
 
 /* ===== ANNOUNCEMENTS ===== */
-function renderAnnouncements(){var mob=isMobileView();var items=APP.announcements.sort(function(a,b){return b.date.localeCompare(a.date)});var lh=items.map(function(a){var tn=a.targetIds&&a.targetIds.length>0?a.targetIds.map(function(id){var u=findUser(id);return u?u.name:'Unknown'}).join(', '):'All Employees';return '<div class="card" style="border-left:3px solid '+(a.priority==='high'?'var(--dan)':'var(--accent')+'"><div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px"><div><h3 style="font-size:14px;font-weight:700">'+a.title+'</h3><span style="font-size:10px;color:var(--muted)">'+a.date+' — <span style="color:var(--info)">'+tn+'</span></span></div><button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(\''+a.id+'\')"><i class="fas fa-trash"></i></button></div><p style="font-size:12px;color:var(--muted);line-height:1.6">'+a.content+'</p></div>'}).join('');if(!items.length)lh='<div class="card" style="text-align:center;color:var(--muted);padding:30px">None</div>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Announcements</h2></div><button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAddAnnouncement()"><i class="fas fa-plus"></i>'+(mob?'':' New')+'</button></div><div style="display:flex;flex-direction:column;gap:10px">'+lh+'</div>'}
+function renderAnnouncements(){
+    var mob=isMobileView();
+    var items=APP.announcements.sort(function(a,b){return b.date.localeCompare(a.date)});
+    var lh=items.map(function(a){
+        var tn=a.targetIds&&a.targetIds.length>0?a.targetIds.map(function(id){var u=findUser(id);return u?u.name:'Unknown'}).join(', '):'All Employees';
+        var delBtn = isAdminOrHR()? '<button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(\''+a.id+'\')"><i class="fas fa-trash"></i></button>' : '';
+        return '<div class="card" style="border-left:3px solid '+(a.priority==='high'?'var(--dan)':'var(--accent')+'"><div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px"><div><h3 style="font-size:14px;font-weight:700">'+a.title+'</h3><span style="font-size:10px;color:var(--muted)">'+a.date+' — <span style="color:var(--info)">'+tn+'</span></span></div>'+delBtn+'</div><p style="font-size:12px;color:var(--muted);line-height:1.6">'+a.content+'</p></div>'
+    }).join('');
+    if(!items.length) lh='<div class="card" style="text-align:center;color:var(--muted);padding:30px">None</div>';
+    var addBtn = isAdminOrHR()? '<button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAddAnnouncement()"><i class="fas fa-plus"></i>'+(mob?'':' New')+'</button>' : '';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Announcements</h2></div>'+addBtn+'</div><div style="display:flex;flex-direction:column;gap:10px">'+lh+'</div>'
+}
 function showAddAnnouncement(){
     var users = APP.users.filter(function(u){return u.role!=='admin'&&u.status==='active'});
     var list = users.map(function(u){return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><input type="checkbox" class="ann-user-cbx" id="ann_user_'+u.id+'" value="'+u.id+'"><label for="ann_user_'+u.id+'" style="flex:1">'+u.name+' <span style="color:var(--muted);font-size:11px">('+ (u.department||'') +')</span></label></div>'}).join('');
@@ -444,13 +521,34 @@ function addAnnouncement(){
         if(sel){selected = Array.from(sel.selectedOptions).map(function(o){return o.value}).filter(Boolean)}
     }
     var names = selected.map(function(id){var u=findUser(id);return u?u.name:''}).filter(Boolean);
-    APP.announcements.push({id:genId(),title:t,content:c,date:getTodayStr(),postedBy:APP.currentUser.id,priority:p,targetIds:selected,targetNames:names});
+    APP.announcements.push({id:genId(),title:t,content:c,date:getTodayStr(),createdAt:new Date().toISOString(),postedBy:APP.currentUser.id,priority:p,targetIds:selected,targetNames:names});
     pushRemoteData();closeModal();showToast('Posted','success');renderApp();
 }
 function deleteAnnouncement(id){APP.announcements=APP.announcements.filter(function(a){return a.id!==id});pushRemoteData();showToast('Deleted','info');renderApp()}
 
 /* ===== EMPLOYEES ===== */
 function renderEmployees(){var mob=isMobileView(),au=APP.users.filter(function(u){return u.role!=='admin'}),rf=(document.getElementById('empRF')||{}).value||'',df=rf?au.filter(function(u){return u.role===rf}):au;var rows=df.map(function(u){return '<tr><td style="font-weight:600">'+u.name+'</td>'+(mob?'':'<td style="color:var(--muted);font-size:11px">'+u.username+'</td>')+'<td><span class="badge '+(u.role==='hr'?'badge-pending':'badge-approved')+'">'+u.role+'</span></td>'+(mob?'':'<td style="color:var(--muted)">'+(u.department||'--')+'</td><td><span class="badge '+(u.status==='active'?'badge-approved':'badge-rejected')+'">'+u.status+'</span></td>')+'<td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="showEditEmployee(\''+u.id+'\')"><i class="fas fa-edit"></i></button> <button class="btn btn-secondary btn-sm" onclick="showResetCreds(\''+u.id+'\')"><i class="fas fa-key"></i></button> <button class="btn '+(u.status==='active'?'btn-danger':'btn-success')+' btn-sm" onclick="toggleUserStatus(\''+u.id+'\')"><i class="fas fa-'+(u.status==='active'?'ban':'check')+'"></i></button> <button class="btn btn-danger btn-sm" onclick="confirmDeleteUser(\''+u.id+'\')"><i class="fas fa-trash"></i></button></td></tr>'}).join('');var fh='<select class="input" style="width:130px" id="empRF" onchange="renderApp()"><option value="">All Roles</option><option value="hr"'+(rf==='hr'?' selected':'')+'>HR</option><option value="employee"'+(rf==='employee'?' selected':'')+'>Employee</option></select>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Employees</h2></div><div style="display:flex;gap:6px">'+(mob?'':fh)+'<button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAddEmployee()"><i class="fas fa-plus"></i>'+(mob?'':' Add')+'</button></div></div>'+(mob?'<div style="margin-bottom:10px">'+fh+'</div>':'')+'<div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>Name</th>'+(mob?'':'<th>Username</th>')+'<th>Role</th>'+(mob?'':'<th>Dept</th><th>Status</th>')+'<th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
+function renderProfiles(){
+    var mob=isMobileView();
+    var users = APP.users.filter(function(u){return u.role!=='admin'}).sort(function(a,b){return (a.name||'').localeCompare(b.name||'')});
+    if(users.length===0) return '<div class="card" style="text-align:center;color:var(--muted);padding:30px">No employees</div>';
+    var rows = users.map(function(u){return '<div class="card" style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:700">'+u.name+'</div><div style="font-size:12px;color:var(--muted)">'+(u.email||'')+' • '+(u.phone||'')+'</div></div><div style="display:flex;gap:8px"><button class="btn btn-secondary btn-sm" onclick="showFullProfileAdmin(\''+u.id+'\')"><i class="fas fa-eye"></i></button><button class="btn btn-secondary btn-sm" onclick="showEditEmployee(\''+u.id+'\')"><i class="fas fa-edit"></i></button></div></div>'}).join('');
+    return '<div style="margin-bottom:16px"><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Employee Profiles</h2></div><div style="display:flex;flex-direction:column;gap:10px">'+rows+'</div>';
+}
+
+function showFullProfileAdmin(id){
+    var u=findUser(id); if(!u) return; 
+    var fam = (u.family && u.family.length)? u.family.map(function(f){return '<div style="padding:6px 0;border-bottom:1px solid var(--border)"><div style="font-weight:700">'+(f.name||'')+'</div><div style="font-size:12px;color:var(--muted)">'+(f.relation||'')+' • '+(f.phone||'')+'</div></div>'}).join('') : '<div style="text-align:center;color:var(--muted);padding:12px">No family info</div>';
+    var emerg = u.emergency?'<div style="font-weight:700">'+(u.emergency.name||'')+'</div><div style="font-size:12px;color:var(--muted)">'+(u.emergency.relation||'')+' • '+(u.emergency.phone||'')+'</div>':'<div style="text-align:center;color:var(--muted);padding:12px">No emergency contact</div>';
+    var skills = Array.isArray(u.skills)?u.skills.join(', '):(u.skills||'');
+    var html = '<h3 style="font-size:17px;font-weight:800;margin-bottom:12px">Profile — '+u.name+'</h3>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div class="card"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">Personal</h4><div style="font-weight:700">'+(u.name||'')+'</div><div style="font-size:12px;color:var(--muted)">'+(u.email||'')+'</div><div style="font-size:12px;color:var(--muted)">'+(u.phone||'')+'</div><div style="font-size:12px;color:var(--muted)">DOB: '+(u.dob||'')+'</div><div style="font-size:12px;color:var(--muted)">Address: '+(u.address||'')+'</div></div><div class="card"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">Employment</h4><div style="font-size:12px;color:var(--muted)">Username: '+(u.username||'')+'</div><div style="font-size:12px;color:var(--muted)">Dept: '+(u.department||'')+'</div><div style="font-size:12px;color:var(--muted)">Designation: '+(u.designation||'')+'</div><div style="font-size:12px;color:var(--muted)">Joined: '+(u.joinDate||'')+'</div><div style="font-size:12px;color:var(--muted);margin-top:8px">Casual quota: '+(u.casualQuota!=null?u.casualQuota:'-')+' — Sick quota: '+(u.sickQuota!=null?u.sickQuota:'-')+'</div></div></div>'+
+        '<div class="card" style="margin-bottom:12px"><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">Qualifications</h4><div style="font-weight:700">'+(u.qualification||'')+'</div><div style="font-size:12px;color:var(--muted)">'+(u.education?u.education+' • ':'')+(u.experienceYears? (u.experienceYears+' yrs') : '')+'</div><div style="margin-top:8px;font-size:12px;color:var(--muted)">Skills: '+(skills||'--')+'</div></div>'+
+        '<div class="card" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">Emergency</h4>'+emerg+'</div><div><h4 style="font-size:13px;font-weight:700;margin-bottom:8px">Family</h4>'+fam+'</div></div>'+
+        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>';
+    openModal(html);
+}
+
 function showAddEmployee(){openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Create User</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Name *</label><input class="input" id="eN" placeholder="Name"></div><div><label class="label">Username *</label><input class="input" id="eU" placeholder="Username"></div><div><label class="label">Password *</label><input class="input" id="eP" placeholder="Password"></div><div><label class="label">Role</label><select class="input" id="eR"><option value="employee">Employee</option><option value="hr">HR</option></select></div><div><label class="label">Email</label><input class="input" id="eE" placeholder="Email"></div><div><label class="label">Phone</label><input class="input" id="ePh" placeholder="Phone"></div><div><label class="label">Department</label><input class="input" id="eD" placeholder="Dept"></div><div><label class="label">Designation</label><input class="input" id="eDs" placeholder="Designation"></div><div><label class="label">Joining Date</label><input class="input" id="eJ" type="date"></div><div><label class="label">Gender</label><select class="input" id="eG"><option>Male</option><option>Female</option><option>Other</option></select></div></div><div style="margin-bottom:16px"><label class="label">Address</label><input class="input" id="eA" placeholder="Address"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="addEmp()"><i class="fas fa-user-plus"></i> Create</button></div>')}
 function addEmp(){var n=document.getElementById('eN').value.trim(),u=document.getElementById('eU').value.trim(),p=document.getElementById('eP').value.trim();if(!n||!u||!p){showToast('Name, username, password required','warning');return}if(APP.users.find(function(x){return x.username===u})){showToast('Username exists','error');return}APP.users.push({id:genId(),username:u,password:p,name:n,role:document.getElementById('eR').value,email:document.getElementById('eE').value.trim(),phone:document.getElementById('ePh').value.trim(),department:document.getElementById('eD').value.trim(),designation:document.getElementById('eDs').value.trim(),joinDate:document.getElementById('eJ').value,gender:document.getElementById('eG').value,address:document.getElementById('eA').value.trim(),status:'active',dob:'',location:null});pushRemoteData();closeModal();showToast('Created','success');renderApp()}
 function showEditEmployee(id){var u=findUser(id);if(!u)return;openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Edit — '+u.name+'</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Name</label><input class="input" id="xN" value="'+u.name+'"></div><div><label class="label">Username</label><input class="input" id="xU" value="'+u.username+'"></div><div><label class="label">Role</label><select class="input" id="xR"><option value="employee"'+(u.role==='employee'?' selected':'')+'>Employee</option><option value="hr"'+(u.role==='hr'?' selected':'')+'>HR</option></select></div><div><label class="label">Email</label><input class="input" id="xE" value="'+(u.email||'')+'"></div><div><label class="label">Phone</label><input class="input" id="xPh" value="'+(u.phone||'')+'"></div><div><label class="label">Department</label><input class="input" id="xD" value="'+(u.department||'')+'"></div><div><label class="label">Designation</label><input class="input" id="xDs" value="'+(u.designation||'')+'"></div><div><label class="label">Joining</label><input class="input" id="xJ" type="date" value="'+(u.joinDate||'')+'"></div><div><label class="label">Gender</label><select class="input" id="xG">'+['Male','Female','Other'].map(function(g){return '<option'+(u.gender===g?' selected':'')+'>'+g+'</option>';}).join('')+'</select></div><div><label class="label">DOB</label><input class="input" id="xDob" type="date" value="'+(u.dob||'')+'"></div><div><label class="label">Casual quota (override)</label><input class="input" id="xCQ" type="number" min="0" value="'+(u.casualQuota!=null?u.casualQuota:'')+'"></div><div><label class="label">Sick quota (override)</label><input class="input" id="xSQ" type="number" min="0" value="'+(u.sickQuota!=null?u.sickQuota:'')+'"></div></div><div style="margin-bottom:16px"><label class="label">Address</label><input class="input" id="xA" value="'+(u.address||'')+'"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEE(\''+id+'\')"><i class="fas fa-save"></i> Save</button></div>')}
@@ -476,6 +574,11 @@ function getLeaveBalance(userId){
 
 function renderLeaveApp(){var mob=isMobileView(),bal=getLeaveBalance(APP.currentUser.id),ml=APP.leaves.filter(function(l){return l.userId===APP.currentUser.id}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)});var rows=ml.map(function(l){return '<tr><td style="font-weight:600">'+l.fromDate+'</td><td>'+l.toDate+'</td>'+(mob?'':'<td>'+l.days+'</td>')+'<td style="font-size:10px">'+l.type+'</td><td><span class="badge badge-'+(l.status==='approved'?'approved':l.status==='rejected'?'rejected':'pending')+'">'+l.status+'</span></td></tr>';}).join('');if(!ml.length)rows='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">None</td></tr>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Leave Application</h2><div style="font-size:12px;color:var(--muted);margin-top:6px">Casual: '+bal.casualRemaining+' of '+bal.casualTotal+' days — Sick: '+bal.sickRemaining+' of '+bal.sickTotal+' days</div></div></div><button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAL()"><i class="fas fa-plus"></i>'+(mob?'':' Apply')+'</button></div><div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>From</th><th>To</th>'+(mob?'':'<th>Days</th>')+'<th>Type</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
 function showAL(){openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Apply for Leave</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">From</label><input class="input" id="lF" type="date"></div><div><label class="label">To (for Casual/Sick)</label><input class="input" id="lT" type="date"></div></div><div style="margin-bottom:12px"><label class="label">Type</label><select class="input" id="lTp"><option>Casual Leave</option><option>Sick Leave</option><option>Half Day</option></select></div><div style="margin-bottom:12px"><label class="label">If Half Day: Session</label><select class="input" id="lSession"><option value="morning">Morning</option><option value="afternoon">Afternoon</option></select></div><div style="margin-bottom:12px"><label class="label">If Half Day applies to</label><select class="input" id="lHalfFor"><option>Casual Leave</option><option>Sick Leave</option></select></div><div style="margin-bottom:16px"><label class="label">Reason</label><textarea class="input" id="lRs" rows="3" placeholder="Reason..." style="resize:vertical"></textarea></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="subL()"><i class="fas fa-paper-plane"></i> Submit</button></div>')}
+function showAL(){
+    var users = APP.users.filter(function(u){return u.id!== (APP.currentUser?APP.currentUser.id:null) && u.status==='active' && u.role!=='admin'});
+    var options = '<option value="">Select responsible colleague</option>' + users.map(function(u){return '<option value="'+u.id+'">'+u.name+' ('+(u.department||'')+')</option>'}).join('');
+    openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Apply for Leave</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">From</label><input class="input" id="lF" type="date"></div><div><label class="label">To (for Casual/Sick)</label><input class="input" id="lT" type="date"></div></div><div style="margin-bottom:12px"><label class="label">Type</label><select class="input" id="lTp"><option>Casual Leave</option><option>Sick Leave</option><option>Half Day</option></select></div><div style="margin-bottom:12px"><label class="label">If Half Day: Session</label><select class="input" id="lSession"><option value="morning">Morning</option><option value="afternoon">Afternoon</option></select></div><div style="margin-bottom:12px"><label class="label">If Half Day applies to</label><select class="input" id="lHalfFor"><option>Casual Leave</option><option>Sick Leave</option></select></div><div style="margin-bottom:12px"><label class="label">Assign responsibility to</label><select class="input" id="lDelegate">'+options+'</select></div><div style="margin-bottom:16px"><label class="label">Reason</label><textarea class="input" id="lRs" rows="3" placeholder="Reason..." style="resize:vertical"></textarea></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="subL()"><i class="fas fa-paper-plane"></i> Submit</button></div>')
+}
 function subL(){var f=document.getElementById('lF').value,t=document.getElementById('lT').value,tp=document.getElementById('lTp').value,r=document.getElementById('lRs').value.trim();if(!f||!tp||!r){showToast('Fill all fields','warning');return}if(tp!=='Half Day' && !t){showToast('Select To date for date based leaves','warning');return}if(tp!=='Half Day' && t<f){showToast('Invalid dates','error');return}
     var days=1;
     if(tp==='Half Day'){
@@ -485,8 +588,11 @@ function subL(){var f=document.getElementById('lF').value,t=document.getElementB
     } else {
         days=Math.ceil((new Date(t)-new Date(f))/86400000)+1;
     }
-    APP.leaves.push({id:genId(),userId:APP.currentUser.id,fromDate:f,toDate:t,days:days,type:tp,session:(tp==='Half Day'?document.getElementById('lSession').value:null),halfFor:(tp==='Half Day'?halfFor:null),reason:r,status:'pending',createdAt:new Date().toISOString()});
-    pushRemoteData();closeModal();showToast('Submitted','success');renderApp()
+    var delegate = (document.getElementById('lDelegate')||{}).value || '';
+    if(!delegate){ showToast('Select a responsible colleague','warning'); return }
+    var req = { id: genId(), userId: APP.currentUser.id, type: 'leave', fromDate: f, toDate: t, days: days, leaveType: tp, session: (tp==='Half Day'?document.getElementById('lSession').value:null), halfFor: (tp==='Half Day'?halfFor:null), reason: r, status: 'delegate_pending', delegateId: delegate, createdAt: new Date().toISOString() };
+    APP.requests.push(req);
+    pushRemoteData();closeModal();showToast('Sent to '+(findUser(delegate)?findUser(delegate).name:'colleague'),'success');renderApp()
 }
 
 /* ===== LEAVE MGMT ===== */
@@ -518,23 +624,61 @@ function svLA(id){
 
 /* ===== PENDING REQUESTS ===== */
 function renderRequests(){
-    var rs=APP.requests.sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)}),pc=rs.filter(function(r){return r.status==='pending'}).length;
+    var rs=APP.requests.sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)}),pc=rs.filter(function(r){return r.status.indexOf('pending')!==-1}).length;
     if(!rs.length) return '<div style="margin-bottom:16px"><h2 style="font-size:18px;font-weight:900">Pending Requests</h2></div><div class="card" style="text-align:center;color:var(--muted);padding:30px"><i class="fas fa-check-circle" style="font-size:32px;color:var(--suc);margin-bottom:8px;display:block"></i>All clear!</div>';
     var lh=rs.map(function(r){
         var u=findUser(r.userId);
-        var canAct=isAdminOrHR();
-        var ac='';
-        if(canAct){
-            ac=r.status==='pending'?'<button class="btn btn-success btn-sm" onclick="rrReq(\''+r.id+'\',\'approved\')"><i class="fas fa-check"></i></button> <button class="btn btn-danger btn-sm" onclick="rrReq(\''+r.id+'\',\'rejected\')"><i class="fas fa-times"></i></button>':'<button class="btn btn-secondary btn-sm" onclick="edReq(\''+r.id+'\')"><i class="fas fa-edit"></i> Edit</button>'
+        var bc = r.status.indexOf('pending')!==-1 ? 'var(--warn)' : (r.status.indexOf('accepted')!==-1 || r.status==='approved' ? 'var(--suc)' : 'var(--dan)');
+        var body = '';
+        if(r.type==='leave'){
+            var delegate = findUser(r.delegateId);
+            body += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><strong>'+(u?u.name:'--')+'</strong> — Leave request ('+ (r.leaveType||'') +')</div>';
+            body += '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">'+r.fromDate+' to '+r.toDate+' — '+r.days+' day(s)</div>';
+            body += '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Reason: '+(r.reason||'')+'</div>';
+            body += '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Assigned: '+(delegate?delegate.name:'-')+'</div>';
+            // actions
+            if(APP.currentUser && APP.currentUser.id===r.delegateId && r.status==='delegate_pending'){
+                body += '<div style="display:flex;gap:8px"><button class="btn btn-success btn-sm" onclick="acceptDelegate(\''+r.id+'\')">Accept</button><button class="btn btn-danger btn-sm" onclick="rejectDelegate(\''+r.id+'\')">Reject</button></div>';
+            } else if(isAdminOrHR() && r.status==='hr_pending'){
+                body += '<div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" onclick="hrForwardToAdmin(\''+r.id+'\')">Verify & Send to Admin</button><button class="btn btn-danger btn-sm" onclick="rejectRequest(\''+r.id+'\')">Reject</button></div>';
+            } else if(isAdmin() && r.status==='admin_pending'){
+                body += '<div style="display:flex;gap:8px"><button class="btn btn-success btn-sm" onclick="adminApproveLeave(\''+r.id+'\')">Approve</button><button class="btn btn-danger btn-sm" onclick="rejectRequest(\''+r.id+'\')">Reject</button></div>';
+            }
+        } else if(r.type==='profile_edit'){
+            var target = findUser(r.targetUserId||r.userId);
+            body += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><strong>Profile change request</strong> — '+(target?target.name:'--')+'</div>';
+            body += '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Requested changes preview available in admin panel.</div>';
+            if(isAdminOrHR()){
+                body += '<div style="display:flex;gap:8px"><button class="btn btn-success btn-sm" onclick="approveProfileChange(\''+r.id+'\')">Approve</button><button class="btn btn-danger btn-sm" onclick="rejectRequest(\''+r.id+'\')">Reject</button></div>';
+            }
+        } else {
+            // other request types (late/early)
+            var canAct=isAdminOrHR();
+            if(canAct){
+                body = r.remark?'<div style="margin-bottom:8px">'+r.remark+'</div>':'';
+                body += (r.status==='pending'?'<div style="display:flex;gap:8px"><button class="btn btn-success btn-sm" onclick="rrReq(\''+r.id+'\',\'approved\')">Approve</button><button class="btn btn-danger btn-sm" onclick="rrReq(\''+r.id+'\',\'rejected\')">Reject</button></div>':'');
+            } else {
+                body = r.remark || '';
+            }
         }
-        var bc=r.status==='pending'?'var(--warn)':(r.status==='approved'?'var(--suc)':'var(--dan)');
-        return '<div class="card" style="border-left:3px solid '+bc+'"><div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:8px"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap"><span style="font-weight:700;font-size:13px">'+(u?('<a href="javascript:void(0)" onclick="showUserOverview(\''+u.id+'\')">'+u.name+'</a>'):'--')+'</span><span class="badge '+(r.type==='late'?'badge-pending':'badge-rejected')+'">'+(r.type==='late'?'Late':'Early')+'</span><span class="badge badge-'+(r.status==='approved'?'approved':r.status==='rejected'?'rejected':'pending')+'">'+r.status+'</span></div><p style="font-size:12px;color:var(--text);margin-bottom:4px">'+r.remark+'</p><div style="display:flex;gap:12px;font-size:10px;color:var(--muted)"><span>'+r.date+'</span><span>'+r.time+'</span><span>'+renderLocationField(r)+'</span></div></div><div style="display:flex;gap:5px;flex-shrink:0">'+ac+'</div></div></div>'
+        return '<div class="card" style="border-left:3px solid '+bc+'"><div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:8px"><div style="flex:1;min-width:0">'+body+'<div style="display:flex;gap:12px;font-size:10px;color:var(--muted);margin-top:8px"><span>'+ (r.createdAt? (new Date(r.createdAt)).toLocaleString() : '') +'</span>'+ (r.location?('<span>'+renderLocationField(r)+'</span>'):'') +'</div></div></div></div>';
     }).join('');
     return '<div style="margin-bottom:16px"><h2 style="font-size:18px;font-weight:900">Pending Requests</h2><p style="color:var(--muted);font-size:11px;margin-top:2px">'+pc+' pending, '+(rs.length-pc)+' resolved</p></div><div style="display:flex;flex-direction:column;gap:10px">'+lh+'</div>'
 }
 function rrReq(id,st){var r=APP.requests.find(function(x){return x.id===id});if(r){r.status=st;r.actionBy=APP.currentUser.id;pushRemoteData();showToast(st,'success');renderApp()}}
 function edReq(id){var r=APP.requests.find(function(x){return x.id===id});if(!r)return;openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:14px">Edit Request</h3><div style="padding:10px;background:var(--bg);border-radius:8px;margin-bottom:12px"><p style="font-size:12px;font-weight:600">'+(findUser(r.userId)?findUser(r.userId).name:'--')+' — '+(r.type==='late'?'Late Arrival':'Early Departure')+'</p><p style="font-size:10.5px;color:var(--muted);margin-top:2px">'+r.remark+' — '+r.date+' '+r.time+'</p></div><div style="margin-bottom:16px"><label class="label">Status</label><select class="input" id="xRS"><option value="pending"'+(r.status==='pending'?' selected':'')+'>Pending</option><option value="approved"'+(r.status==='approved'?' selected':'')+'>Approved</option><option value="rejected"'+(r.status==='rejected'?' selected':'')+'>Rejected</option></select></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="svReq(\''+id+'\')"><i class="fas fa-save"></i> Save</button></div>')}
 function svReq(id){var r=APP.requests.find(function(x){return x.id===id});if(!r)return;r.status=document.getElementById('xRS').value;r.actionBy=APP.currentUser.id;pushRemoteData();closeModal();showToast('Updated','success');renderApp()}
+
+function acceptDelegate(id){var r=APP.requests.find(function(x){return x.id===id});if(!r) return; r.status='hr_pending'; r.delegateDecision='accepted'; r.delegateDecisionBy=APP.currentUser.id; pushRemoteData(); showToast('Accepted — forwarded to HR','success'); renderApp();}
+function rejectDelegate(id){var r=APP.requests.find(function(x){return x.id===id});if(!r) return; // delete the request
+    APP.requests=APP.requests.filter(function(x){return x.id!==id}); pushRemoteData(); showToast('You rejected the request — deleted','info'); renderApp();}
+function hrForwardToAdmin(id){var r=APP.requests.find(function(x){return x.id===id});if(!r) return; r.status='admin_pending'; r.hrVerifiedBy=APP.currentUser.id; pushRemoteData(); showToast('Sent to Admin','success'); renderApp();}
+function adminApproveLeave(id){var r=APP.requests.find(function(x){return x.id===id});if(!r) return; // create leave and remove request
+    APP.leaves.push({ id: genId(), userId: r.userId, fromDate: r.fromDate, toDate: r.toDate, days: r.days, type: r.leaveType||'Casual Leave', session: r.session||null, halfFor: r.halfFor||null, reason: r.reason||'', status: 'approved', createdAt: new Date().toISOString(), actionBy: APP.currentUser.id });
+    APP.requests = APP.requests.filter(function(x){return x.id!==id}); pushRemoteData(); showToast('Leave approved','success'); renderApp();}
+function rejectRequest(id){APP.requests=APP.requests.filter(function(x){return x.id!==id});pushRemoteData();showToast('Rejected','info');renderApp()}
+
+function approveProfileChange(id){var r=APP.requests.find(function(x){return x.id===id}); if(!r) return; var changes = r.changes||{}; var u=findUser(r.targetUserId||r.userId); if(u){ Object.keys(changes).forEach(function(k){ u[k]=changes[k]; }); } APP.requests=APP.requests.filter(function(x){return x.id!==id}); pushRemoteData(); showToast('Profile updated','success'); renderApp(); }
 
 /* ===== HOLIDAYS ===== */
 function renderHolidays(){var mob=isMobileView();var hol=APP.holidays.sort(function(a,b){return a.date.localeCompare(b.date)});var rows=hol.map(function(h){return '<tr><td style="font-weight:600">'+h.date+'</td><td style="color:var(--muted)">'+h.name+'</td><td>'+(h.type==='custom'?'<span class="badge badge-pending">Custom</span>':'<span class="badge badge-approved">Bangladesh Bank</span>')+'</td>'+(isAdmin()?'<td style="white-space:nowrap"><button class="btn btn-danger btn-sm" onclick="delHol(\''+h.id+'\')"><i class="fas fa-trash"></i></button></td>':'')+'</tr>'}).join('');if(!hol.length)rows='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">No holidays</td></tr>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Holidays '+new Date().getFullYear()+'</h2></div>'+(isAdmin()?'<button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAddHol()"><i class="fas fa-plus"></i>'+(mob?'':' Add Holiday')+'</button>':'')+'</div><div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Holiday</th><th>Type</th>'+(isAdmin()?'<th>Action</th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
@@ -619,8 +763,106 @@ function initSSE(){
 }
 
 /* ===== EMPLOYEE PROFILE ===== */
-function showEditProfile(){var u=APP.currentUser;if(!u)return;openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Edit My Profile</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Name</label><input class="input" id="pNm" value="'+u.name+'"></div><div><label class="label">Email</label><input class="input" id="pEm" value="'+(u.email||'')+'"></div><div><label class="label">Phone</label><input class="input" id="pPh" value="'+(u.phone||'')+'"></div><div><label class="label">Gender</label><select class="input" id="pGn">'+['Male','Female','Other'].map(function(g){return '<option'+(u.gender===g?' selected':'')+'>'+g+'</option>';}).join('')+'</select></div><div><label class="label">DOB</label><input class="input" id="pDb" type="date" value="'+(u.dob||'')+'"></div><div><label class="label">Address</label><input class="input" id="pAd" value="'+(u.address||'')+'"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Casual quota (override)</label><input class="input" id="pCQ" type="number" min="0" value="'+(u.casualQuota!=null?u.casualQuota:'')+'"></div><div><label class="label">Sick quota (override)</label><input class="input" id="pSQ" type="number" min="0" value="'+(u.sickQuota!=null?u.sickQuota:'')+'"></div></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="svPr()"><i class="fas fa-save"></i> Save</button></div>')}
-function svPr(){var u=APP.currentUser;if(!u)return;u.name=document.getElementById('pNm').value.trim()||u.name;u.email=document.getElementById('pEm').value.trim();u.phone=document.getElementById('pPh').value.trim();u.gender=document.getElementById('pGn').value;u.dob=document.getElementById('pDb').value;u.address=document.getElementById('pAd').value.trim();var cq=(document.getElementById('pCQ')||{}).value, sq=(document.getElementById('pSQ')||{}).value;u.casualQuota = cq!==''?parseFloat(cq): (u.casualQuota!=null?u.casualQuota:null);u.sickQuota = sq!==''?parseFloat(sq): (u.sickQuota!=null?u.sickQuota:null);var i=APP.users.findIndex(function(x){return x.id===u.id});if(i>=0)APP.users[i]=u;pushRemoteData();closeModal();showToast('Profile updated','success');renderApp()}
+function showEditProfile(){
+    var u=APP.currentUser; if(!u) return;
+    var familyVal = (u.family||[]).map(function(f){return (f.name||'')+' | '+(f.relation||'')+' | '+(f.phone||'')}).join('\n');
+    var skillsVal = Array.isArray(u.skills)?u.skills.join(', '):(u.skills||'');
+    var quotaFields = isAdmin() ? ('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+
+            '<div><label class="label">Casual quota (override)</label><input class="input" id="pCQ" type="number" min="0" value="'+(u.casualQuota!=null?u.casualQuota:'')+'"></div>'+
+            '<div><label class="label">Sick quota (override)</label><input class="input" id="pSQ" type="number" min="0" value="'+(u.sickQuota!=null?u.sickQuota:'')+'"></div>'+
+        '</div>') : '';
+    openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Edit My Profile</h3>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+
+            '<div><label class="label">Name</label><input class="input" id="pNm" value="'+(u.name||'')+'"></div>'+
+            '<div><label class="label">Email</label><input class="input" id="pEm" value="'+(u.email||'')+'"></div>'+
+            '<div><label class="label">Phone</label><input class="input" id="pPh" value="'+(u.phone||'')+'"></div>'+
+            '<div><label class="label">Gender</label><select class="input" id="pGn">'+['Male','Female','Other'].map(function(g){return '<option'+(u.gender===g?' selected':'')+'>'+g+'</option>';}).join('')+'</select></div>'+
+            '<div><label class="label">DOB</label><input class="input" id="pDb" type="date" value="'+(u.dob||'')+'"></div>'+
+            '<div><label class="label">Address</label><input class="input" id="pAd" value="'+(u.address||'')+'"></div>'+
+        '</div>'+
+        quotaFields+
+        '<div style="margin-bottom:12px"><label class="label">Family Members (one per line: Name | Relation | Phone)</label><textarea class="input" id="pFamily" rows="4" placeholder="e.g. Jane Doe | Spouse | 0123456789">'+familyVal+'</textarea></div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">'+
+            '<div><label class="label">Emergency — Name</label><input class="input" id="pEName" value="'+(u.emergency?u.emergency.name||'':'')+'"></div>'+
+            '<div><label class="label">Relation</label><input class="input" id="pERel" value="'+(u.emergency?u.emergency.relation||'':'')+'"></div>'+
+            '<div><label class="label">Phone</label><input class="input" id="pEPh" value="'+(u.emergency?u.emergency.phone||'':'')+'"></div>'+
+        '</div>'+
+        '<div style="margin-bottom:12px"><label class="label">Qualification</label><input class="input" id="pQual" value="'+(u.qualification||'')+'"></div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+
+            '<div><label class="label">Education</label><input class="input" id="pEdu" value="'+(u.education||'')+'"></div>'+
+            '<div><label class="label">Experience (years)</label><input class="input" id="pExp" type="number" min="0" value="'+(u.experienceYears!=null?u.experienceYears:'')+'"></div>'+
+        '</div>'+
+        '<div style="margin-bottom:12px"><label class="label">Skills (comma separated)</label><input class="input" id="pSkills" value="'+skillsVal+'"></div>'+
+        '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="svPr()"><i class="fas fa-save"></i> Save</button></div>'
+    );
+}
+
+function svPr(){
+    var u=APP.currentUser; if(!u) return;
+    var newVals = {
+        name: (document.getElementById('pNm')||{}).value.trim() || u.name,
+        email: (document.getElementById('pEm')||{}).value.trim(),
+        phone: (document.getElementById('pPh')||{}).value.trim(),
+        gender: (document.getElementById('pGn')||{}).value,
+        dob: (document.getElementById('pDb')||{}).value,
+        address: (document.getElementById('pAd')||{}).value.trim(),
+        familyRaw: (document.getElementById('pFamily')||{}).value || '',
+        emergencyName: (document.getElementById('pEName')||{}).value.trim(),
+        emergencyRelation: (document.getElementById('pERel')||{}).value.trim(),
+        emergencyPhone: (document.getElementById('pEPh')||{}).value.trim(),
+        qualification: (document.getElementById('pQual')||{}).value.trim(),
+        education: (document.getElementById('pEdu')||{}).value.trim(),
+        experienceYears: (document.getElementById('pExp')||{}).value,
+        skillsRaw: (document.getElementById('pSkills')||{}).value || ''
+    };
+    // normalize quotas (admin only)
+    if(isAdmin()){
+        var cq = (document.getElementById('pCQ')||{}).value;
+        var sq = (document.getElementById('pSQ')||{}).value;
+        if(cq==='') newVals.casualQuota = (u.casualQuota!=null?u.casualQuota:null); else newVals.casualQuota = parseFloat(cq);
+        if(sq==='') newVals.sickQuota = (u.sickQuota!=null?u.sickQuota:null); else newVals.sickQuota = parseFloat(sq);
+    }
+    // parse family
+    var fam = [];
+    try{
+        var lines = (newVals.familyRaw||'').split('\n').map(function(l){return l.trim()}).filter(Boolean);
+        lines.forEach(function(ln){
+            var parts = ln.split('|').map(function(p){return p.trim()});
+            if(parts.length>=1){ fam.push({ name: parts[0]||'', relation: parts[1]||'', phone: parts[2]||'' }); }
+        });
+    }catch(e){ fam = u.family||[] }
+    var emergency = null;
+    if(newVals.emergencyName || newVals.emergencyPhone){ emergency = { name: newVals.emergencyName||'', relation: newVals.emergencyRelation||'', phone: newVals.emergencyPhone||'' }; }
+    var skills = newVals.skillsRaw.split(',').map(function(s){return s.trim()}).filter(Boolean);
+
+    if(u.profileCompleted){
+        var changes = {};
+        var checkFields = { name:newVals.name, email:newVals.email, phone:newVals.phone, gender:newVals.gender, dob:newVals.dob, address:newVals.address, qualification:newVals.qualification, education:newVals.education, experienceYears:newVals.experienceYears };
+        Object.keys(checkFields).forEach(function(k){ if(String(u[k]||'') !== String(checkFields[k]||'')) changes[k]=checkFields[k]; });
+        var famStr = JSON.stringify(fam||[]), oldFamStr = JSON.stringify(u.family||[]);
+        if(famStr!==oldFamStr) changes.family = fam;
+        var emergStr = JSON.stringify(emergency||null), oldEmergStr = JSON.stringify(u.emergency||null);
+        if(emergStr!==oldEmergStr) changes.emergency = emergency;
+        var skillsStr = JSON.stringify(skills||[]), oldSkillsStr = JSON.stringify(u.skills||[]);
+        if(skillsStr!==oldSkillsStr) changes.skills = skills;
+        // admin-only quota changes
+        if(isAdmin()){
+            if(String(u.casualQuota||'') !== String(newVals.casualQuota||'')) changes.casualQuota = newVals.casualQuota;
+            if(String(u.sickQuota||'') !== String(newVals.sickQuota||'')) changes.sickQuota = newVals.sickQuota;
+        }
+        if(Object.keys(changes).length===0){ closeModal(); showToast('No changes detected','info'); return; }
+        APP.requests.push({ id: genId(), type: 'profile_edit', userId: u.id, targetUserId: u.id, proposerId: u.id, changes: changes, status: 'pending', createdAt: new Date().toISOString() });
+        pushRemoteData(); closeModal(); showToast('Profile edit requested — awaiting admin approval','info'); renderApp();
+        return;
+    }
+    // first-time save
+    u.name = newVals.name; u.email = newVals.email; u.phone = newVals.phone; u.gender = newVals.gender; u.dob = newVals.dob; u.address = newVals.address;
+    if(isAdmin()){ u.casualQuota = newVals.casualQuota; u.sickQuota = newVals.sickQuota; }
+    u.profileCompleted = true;
+    u.family = fam; u.emergency = emergency; u.qualification = newVals.qualification; u.education = newVals.education; u.experienceYears = newVals.experienceYears; u.skills = skills;
+    var i = APP.users.findIndex(function(x){return x.id===u.id}); if(i>=0) APP.users[i]=u; pushRemoteData(); closeModal(); showToast('Profile saved','success'); renderApp();
+}
+
 
 /* ===== INIT ===== */
 fetchRemoteData().then(function(ok){

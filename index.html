@@ -180,6 +180,7 @@ function markAnnouncementsSeen(){ try{ setAnnLastSeen(new Date().toISOString());
 function genId(){return 'id_'+Date.now()+'_'+Math.random().toString(36).substr(2,5)}
 function getTodayStr(){return new Date().toISOString().split('T')[0]}
 function getNowTime(){var d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+function getYesterdayStr(){var d=new Date();d.setDate(d.getDate()-1);return d.toISOString().split('T')[0]}
 function findUser(id){return APP.users.find(function(u){return u.id===id})}
 function renderLocationField(item){
     var name = item.location || item.locationName || item.locationLink || '';
@@ -271,6 +272,24 @@ function getLocationPlace(){
             {timeout:12000,enableHighAccuracy:false}
         );
     });
+}
+
+// Location reminder interval id per session
+var LOCATION_REMINDER_ID = null;
+function startLocationReminder(){
+    stopLocationReminder();
+    LOCATION_REMINDER_ID = setInterval(function(){ promptForLocation(); }, 10*60*1000); // every 10 minutes
+}
+function stopLocationReminder(){ if(LOCATION_REMINDER_ID){ clearInterval(LOCATION_REMINDER_ID); LOCATION_REMINDER_ID = null; } }
+function promptForLocation(){
+    try{
+        if(!APP.currentUser) return;
+        var today=getTodayStr();
+        var rec = APP.attendance.find(function(a){return a.userId===APP.currentUser.id && a.date===today});
+        if(!rec) return; // nothing to update
+        if(rec.locationLink || (rec.location && rec.location!=='Location denied' && rec.location!=='Location unavailable')){ stopLocationReminder(); return; }
+        openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:12px">Share Location</h3><div style="margin-bottom:12px;color:var(--muted)">We could not capture your location for today. Please share your location so attendance location can be recorded.</div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Later</button><button class="btn btn-primary" onclick="(function(){ closeModal(); getLocationPlace().then(function(name){ if(LAST_LOCATION){ rec.location = LAST_LOCATION.name; rec.locationLink = LAST_LOCATION.link; rec.locationLat = LAST_LOCATION.lat; rec.locationLon = LAST_LOCATION.lon; pushRemoteData(); stopLocationReminder(); showToast('Location saved','success'); renderApp(); } else { showToast('Location failed','error'); } }) })()">Share now</button></div>');
+    }catch(e){console.error(e)}
 }
 
 function navigateTo(p){APP.currentPage=p;closeMobileMenu();renderApp()}
@@ -390,20 +409,34 @@ async function doLogin(){
     var user=APP.users.find(function(x){return x.username===u&&x.password===p});
     if(!user){showToast('Invalid credentials','error');return}
     if(user.status!=='active'){showToast('Account deactivated','error');return}
-    
+    // Prevent login if user is on an approved leave today
+    var today=getTodayStr();
+    var onLeave = APP.leaves.find(function(l){return l.userId===user.id && l.status==='approved' && l.fromDate<=today && l.toDate>=today});
+    if(onLeave){ openModal('<div style="text-align:center;margin-bottom:12px"><h3 style="font-size:16px;font-weight:800">On Leave</h3><p style="color:var(--muted)">You are on approved leave until '+onLeave.toDate+'. You cannot login during leave days.</p></div><div style="display:flex;gap:8px;justify-content:center"><button class="btn btn-secondary" onclick="closeModal()">OK</button></div>'); return; }
+
     APP.currentUser=user;APP.currentPage='dashboard';
-    if(!user.location){showToast('Fetching location...','info');user.location=await getLocationPlace();pushRemoteData()}
-    var rec=APP.attendance.find(function(a){return a.userId===user.id&&a.date===getTodayStr()});
+    // If location not present, attempt to fetch (non-blocking)
+    if(!user.location){ showToast('Fetching location...','info'); user.location=await getLocationPlace(); pushRemoteData(); }
+    var rec=APP.attendance.find(function(a){return a.userId===user.id&&a.date===today});
     if(!rec){
         var tn=getNowTime(),il=tn>APP.config.lateTime;
-            var locName = (LAST_LOCATION && LAST_LOCATION.name) || (user.location || 'N/A');
-            var locLink = (LAST_LOCATION && LAST_LOCATION.link) || null;
-            var lat = (LAST_LOCATION && LAST_LOCATION.lat) || null;
-            var lon = (LAST_LOCATION && LAST_LOCATION.lon) || null;
-            APP.attendance.push({id:user.id+'_'+getTodayStr(),userId:user.id,date:getTodayStr(),loginTime:tn,logoutTime:null,location:locName,locationLink:locLink,locationLat:lat,locationLon:lon,status:'active',late:il});
+        var locName = (LAST_LOCATION && LAST_LOCATION.name) || (user.location || null);
+        var locLink = (LAST_LOCATION && LAST_LOCATION.link) || null;
+        var lat = (LAST_LOCATION && LAST_LOCATION.lat) || null;
+        var lon = (LAST_LOCATION && LAST_LOCATION.lon) || null;
+        APP.attendance.push({id:user.id+'_'+today,userId:user.id,date:today,loginTime:tn,logoutTime:null,location:locName,locationLink:locLink,locationLat:lat,locationLon:lon,status:'active',late:il});
         pushRemoteData();
         if(user.role!=='admin'&&il){showLatePopup(tn);return}
+    } else {
+        // attendance exists - if it lacks location start reminder
+        if((!rec.locationLink && (!rec.location || rec.location==='Location denied' || rec.location==='Location unavailable'))){ startLocationReminder(); }
     }
+    // If last approved leave ended before today and user hasn't been notified, show one-time message
+    try{
+        var lastApproved = APP.leaves.filter(function(l){return l.userId===user.id && l.status==='approved' && l.toDate < today}).sort(function(a,b){return new Date(b.toDate) - new Date(a.toDate)})[0];
+        if(lastApproved){ var key='amk_leave_notified_'+user.id+'_'+lastApproved.id; if(!localStorage.getItem(key)){ localStorage.setItem(key,'1'); openModal('<div style="text-align:center;margin-bottom:12px"><h3 style="font-size:16px;font-weight:800">Welcome Back</h3><p style="color:var(--muted)">You have completed your leave ending '+lastApproved.toDate+'. You may now attend the system.</p></div><div style="display:flex;gap:8px;justify-content:center"><button class="btn btn-primary" onclick="closeModal()">OK</button></div>'); }
+        }
+    }catch(e){}
     saveSession();showToast('Welcome, '+user.name.split(' ')[0]+'!','success');renderApp();
 }
 
@@ -411,11 +444,11 @@ function showLatePopup(lt){
     openModal('<div style="text-align:center;margin-bottom:16px"><div style="width:52px;height:52px;border-radius:50%;background:rgba(245,158,11,.13);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px"><i class="fas fa-exclamation-triangle" style="font-size:20px;color:var(--warn)"></i></div><h3 style="font-size:17px;font-weight:800;margin-bottom:3px">Late Arrival</h3><p style="color:var(--muted);font-size:12px">Logged in at <strong style="color:var(--warn)">'+lt+'</strong> — after '+APP.config.lateTime+'</p><p style="color:var(--dan);font-size:11px;margin-top:8px;font-weight:600">You will be logged out until admin approves.</p></div><div style="margin-bottom:16px"><label class="label">Reason for being late</label><textarea class="input" id="lateRemark" rows="3" placeholder="Explain..." style="resize:vertical"></textarea></div><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="submitLateRemark()"><i class="fas fa-paper-plane"></i> Submit & Logout</button>');
 }
 function submitLateRemark(){var r=document.getElementById('lateRemark').value.trim();if(!r){showToast('Please provide a reason','warning');return}APP.requests.push({id:genId(),userId:APP.currentUser.id,type:'late',date:getTodayStr(),time:getNowTime(),remark:r,location:APP.currentUser.location,status:'pending',createdAt:new Date().toISOString()});pushRemoteData();closeModal();showToast('Submitted. You will be logged out.','warning');clearSession();APP.currentUser=null;renderApp()}
-function submitLateRemark(){var r=document.getElementById('lateRemark').value.trim();if(!r){showToast('Please provide a reason','warning');return}var locName=(LAST_LOCATION&&LAST_LOCATION.name)||APP.currentUser.location||'N/A';var locLink=(LAST_LOCATION&&LAST_LOCATION.link)||null;var lat=(LAST_LOCATION&&LAST_LOCATION.lat)||null;var lon=(LAST_LOCATION&&LAST_LOCATION.lon)||null;APP.requests.push({id:genId(),userId:APP.currentUser.id,type:'late',date:getTodayStr(),time:getNowTime(),remark:r,location:locName,locationLink:locLink,locationLat:lat,locationLon:lon,status:'pending',createdAt:new Date().toISOString()});pushRemoteData();closeModal();showToast('Submitted. You will be logged out.','warning');clearSession();APP.currentUser=null;renderApp()}
+function submitLateRemark(){var r=document.getElementById('lateRemark').value.trim();if(!r){showToast('Please provide a reason','warning');return}var locName=(LAST_LOCATION&&LAST_LOCATION.name)||APP.currentUser.location||'N/A';var locLink=(LAST_LOCATION&&LAST_LOCATION.link)||null;var lat=(LAST_LOCATION&&LAST_LOCATION.lat)||null;var lon=(LAST_LOCATION&&LAST_LOCATION.lon)||null;APP.requests.push({id:genId(),userId:APP.currentUser.id,type:'late',date:getTodayStr(),time:getNowTime(),remark:r,location:locName,locationLink:locLink,locationLat:lat,locationLon:lon,status:'pending',createdAt:new Date().toISOString()});pushRemoteData();closeModal();showToast('Submitted. You will be logged out.','warning');stopLocationReminder();clearSession();APP.currentUser=null;renderApp()}
 
 /* ===== LOGOUT ===== */
-function handleLogout(){if(!APP.currentUser)return;closeMobileMenu();var ar=APP.attendance.find(function(a){return a.userId===APP.currentUser.id&&a.date===getTodayStr()&&a.status==='active'});if(ar){openModal('<div style="text-align:center;margin-bottom:18px"><div style="width:52px;height:52px;border-radius:50%;background:var(--adim);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px"><i class="fas fa-sign-out-alt" style="font-size:20px;color:var(--accent)"></i></div><h3 style="font-size:17px;font-weight:800;margin-bottom:4px">Exit Type</h3></div><div style="display:flex;flex-direction:column;gap:10px"><button class="btn btn-secondary" style="width:100%;justify-content:center;padding:14px;flex-direction:column" onclick="doLogout(\'sys\')"><i class="fas fa-sign-out-alt" style="font-size:16px;margin-bottom:2px"></i><span style="font-weight:700">Logout from System</span><span style="font-size:10px;color:var(--muted)">Attendance stays active</span></button><button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;flex-direction:column" onclick="doLogout(\'off\')"><i class="fas fa-door-open" style="font-size:16px;margin-bottom:2px"></i><span style="font-weight:700">Leaving Office</span><span style="font-size:10px;color:rgba(0,0,0,.5)">Completes attendance</span></button></div>')}else{clearSession();APP.currentUser=null;renderApp()}}
-function doLogout(t){closeModal();if(t==='sys'){clearSession();APP.currentUser=null;renderApp();showToast('Logged out','info');return}var r=APP.attendance.find(function(a){return a.userId===APP.currentUser.id&&a.date===getTodayStr()&&a.status==='active'});if(r){var tm=getNowTime();r.logoutTime=tm;r.status='done';if(tm<APP.config.earlyTime){showEarlyPopup(tm);return}pushRemoteData();showToast('Marked as left office','success')}clearSession();APP.currentUser=null;renderApp()}
+function handleLogout(){if(!APP.currentUser)return;closeMobileMenu();var ar=APP.attendance.find(function(a){return a.userId===APP.currentUser.id&&a.date===getTodayStr()&&a.status==='active'});if(ar){openModal('<div style="text-align:center;margin-bottom:18px"><div style="width:52px;height:52px;border-radius:50%;background:var(--adim);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px"><i class="fas fa-sign-out-alt" style="font-size:20px;color:var(--accent)"></i></div><h3 style="font-size:17px;font-weight:800;margin-bottom:4px">Exit Type</h3></div><div style="display:flex;flex-direction:column;gap:10px"><button class="btn btn-secondary" style="width:100%;justify-content:center;padding:14px;flex-direction:column" onclick="doLogout(\'sys\')"><i class="fas fa-sign-out-alt" style="font-size:16px;margin-bottom:2px"></i><span style="font-weight:700">Logout from System</span><span style="font-size:10px;color:var(--muted)">Attendance stays active</span></button><button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;flex-direction:column" onclick="doLogout(\'off\')"><i class="fas fa-door-open" style="font-size:16px;margin-bottom:2px"></i><span style="font-weight:700">Leaving Office</span><span style="font-size:10px;color:rgba(0,0,0,.5)">Completes attendance</span></button></div>')}else{stopLocationReminder();clearSession();APP.currentUser=null;renderApp()}}
+function doLogout(t){closeModal();if(t==='sys'){stopLocationReminder();clearSession();APP.currentUser=null;renderApp();showToast('Logged out','info');return}var r=APP.attendance.find(function(a){return a.userId===APP.currentUser.id&&a.date===getTodayStr()&&a.status==='active'});if(r){var tm=getNowTime();r.logoutTime=tm;r.status='done';if(tm<APP.config.earlyTime){showEarlyPopup(tm);return}pushRemoteData();showToast('Marked as left office','success')}stopLocationReminder();clearSession();APP.currentUser=null;renderApp()}
 function showEarlyPopup(ot){openModal('<div style="text-align:center;margin-bottom:16px"><div style="width:52px;height:52px;border-radius:50%;background:rgba(239,68,68,.13);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px"><i class="fas fa-clock" style="font-size:20px;color:var(--dan)"></i></div><h3 style="font-size:17px;font-weight:800;margin-bottom:3px">Early Departure</h3><p style="color:var(--muted);font-size:12px">Leaving at <strong style="color:var(--dan)">'+ot+'</strong> — before '+APP.config.earlyTime+'</p></div><div style="margin-bottom:16px"><label class="label">Reason</label><textarea class="input" id="earlyRemark" rows="3" placeholder="Explain..." style="resize:vertical"></textarea></div><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="submitEarlyRemark()"><i class="fas fa-paper-plane"></i> Submit</button>')}
 function submitEarlyRemark(){var r=document.getElementById('earlyRemark').value.trim();if(!r){showToast('Please provide a reason','warning');return}APP.requests.push({id:genId(),userId:APP.currentUser.id,type:'early',date:getTodayStr(),time:getNowTime(),remark:r,location:APP.currentUser.location,status:'pending',createdAt:new Date().toISOString()});pushRemoteData();closeModal();showToast('Early departure sent','warning');clearSession();APP.currentUser=null;renderApp()}
 function submitEarlyRemark(){var r=document.getElementById('earlyRemark').value.trim();if(!r){showToast('Please provide a reason','warning');return}var locName=(LAST_LOCATION&&LAST_LOCATION.name)||APP.currentUser.location||'N/A';var locLink=(LAST_LOCATION&&LAST_LOCATION.link)||null;var lat=(LAST_LOCATION&&LAST_LOCATION.lat)||null;var lon=(LAST_LOCATION&&LAST_LOCATION.lon)||null;APP.requests.push({id:genId(),userId:APP.currentUser.id,type:'early',date:getTodayStr(),time:getNowTime(),remark:r,location:locName,locationLink:locLink,locationLat:lat,locationLon:lon,status:'pending',createdAt:new Date().toISOString()});pushRemoteData();closeModal();showToast('Early departure sent','warning');clearSession();APP.currentUser=null;renderApp()}
@@ -590,6 +623,9 @@ function subL(){var f=document.getElementById('lF').value,t=document.getElementB
     }
     var delegate = (document.getElementById('lDelegate')||{}).value || '';
     if(!delegate){ showToast('Select a responsible colleague','warning'); return }
+    // Prevent duplicate leave requests for same dates
+    var dup = APP.requests.some(function(x){ return x.userId===APP.currentUser.id && x.type==='leave' && x.fromDate===f && x.toDate===t && (x.status==='delegate_pending' || x.status==='hr_pending' || x.status==='admin_pending' || x.status==='pending') });
+    if(dup){ showToast('A similar leave request already exists','warning'); closeModal(); return }
     var req = { id: genId(), userId: APP.currentUser.id, type: 'leave', fromDate: f, toDate: t, days: days, leaveType: tp, session: (tp==='Half Day'?document.getElementById('lSession').value:null), halfFor: (tp==='Half Day'?halfFor:null), reason: r, status: 'delegate_pending', delegateId: delegate, createdAt: new Date().toISOString() };
     APP.requests.push(req);
     pushRemoteData();closeModal();showToast('Sent to '+(findUser(delegate)?findUser(delegate).name:'colleague'),'success');renderApp()
@@ -865,14 +901,15 @@ function svPr(){
 
 
 /* ===== INIT ===== */
+// Render UI immediately to avoid blocking if remote host is unreachable.
+renderApp();
 fetchRemoteData().then(function(ok){
     if(ok) showToast('Connected to Host Database','info');
     else showToast('Running Offline / Cannot connect to Host DB','warning');
-    initSSE();
+    try{ initSSE(); }catch(e){}
     renderApp();
 }).catch(function(e){
     console.error(e);
-    renderApp();
     showToast('System Error - Running Offline','warning');
 });
 

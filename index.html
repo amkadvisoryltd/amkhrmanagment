@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AMK Advisory — HR Management</title>
+<title>AMK Advisory Limited — HR Management</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://unpkg.com/html5-qrcode"></script>
@@ -112,7 +112,7 @@ var APP = {
     currentUser:null, currentPage:'dashboard',
     users:[], attendance:[], leaves:[], announcements:[], policies:[], requests:[], holidays:[], conveyance:[],
     config:{
-        companyName:'AMK Advisory', 
+        companyName:'AMK Advisory Limited', 
         lateTime:'09:30', 
         earlyTime:'18:30', 
         workDays:['Sat','Sun','Mon','Tue','Wed','Thu','Fri'],
@@ -589,7 +589,7 @@ function renderBilling(){
 
 function showAddBill(){
     var html = '<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Unified Billing Request</h3>';
-    html += '<div style="margin-bottom:16px"><h4 class="label">Field Visits</h4><div class="table-wrap"><table><thead><tr><th>Date</th><th>Particular</th><th>Transport</th><th>BDT</th><th></th></tr></thead><tbody id="fieldBody"></tbody></table></div><button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addBillingRow(\'field\')"><i class="fas fa-plus"></i> Add Field Row</button></div>';
+    html += '<div style="margin-bottom:16px"><h4 class="label">Field Visits</h4><div class="table-wrap"><table><thead><tr><th>Date</th><th>Particular</th><th>AMK Ref</th><th>Transport</th><th>BDT</th><th></th></tr></thead><tbody id="fieldBody"></tbody></table></div><button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addBillingRow(\'field\')"><i class="fas fa-plus"></i> Add Field Row</button></div>';
     html += '<div style="margin-bottom:16px"><h4 class="label">Snacks / Lunch</h4><div class="table-wrap"><table><thead><tr><th>Date</th><th>Work Ref</th><th>Particular</th><th>BDT</th><th></th></tr></thead><tbody id="snacksBody"></tbody></table></div><button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addBillingRow(\'snacks\')"><i class="fas fa-plus"></i> Add Snack Row</button></div>';
     html += '<div style="margin-bottom:20px"><h4 class="label">Contractual Daily Bill (Optional)</h4><div style="display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:8px"><div><input class="input" type="date" id="cDate"></div><div><input class="input" placeholder="Work Description" id="cDesc"></div><div><input class="input" type="number" placeholder="BDT" id="cBdt"></div></div></div>';
     html += '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveNewBill()"><i class="fas fa-paper-plane"></i> Submit to Accounts</button></div>';
@@ -602,7 +602,7 @@ function addBillingRow(type, data){
     var tbody = document.getElementById(type + 'Body'); if(!tbody) return;
     var tr = document.createElement('tr');
     if(type==='field'){
-        tr.innerHTML = '<td><input type="date" class="input p-1 f-date" value="'+(data?data.date:getTodayStr())+'"></td><td><input class="input p-1 f-part" value="'+(data?data.particular:'')+'"></td><td><input class="input p-1 f-trans" value="'+(data?data.transport:'')+'"></td><td><input type="number" class="input p-1 f-bdt" value="'+(data?data.bdt:'')+'"></td><td><button onclick="this.closest(\'tr\').remove()" style="color:var(--dan)"><i class="fas fa-times"></i></button></td>';
+        tr.innerHTML = '<td><input type="date" class="input p-1 f-date" value="'+(data?data.date:getTodayStr())+'"></td><td><input class="input p-1 f-part" value="'+(data?data.particular:'')+'"></td><td><input class="input p-1 f-trans"  value="'+(data?data.transport:'')+'"></td><td><input type="number" class="input p-1 f-bdt" value="'+(data?data.bdt:'')+'"></td><td><button onclick="this.closest(\'tr\').remove()" style="color:var(--dan)"><i class="fas fa-times"></i></button></td>';
     } else {
         tr.innerHTML = '<td><input type="date" class="input p-1 s-date" value="'+(data?data.date:getTodayStr())+'"></td><td><input class="input p-1 s-ref" value="'+(data?data.workRef:'')+'"></td><td><input class="input p-1 s-part" value="'+(data?data.particular:'')+'"></td><td><input type="number" class="input p-1 s-bdt" value="'+(data?data.bdt:'')+'"></td><td><button onclick="this.closest(\'tr\').remove()" style="color:var(--dan)"><i class="fas fa-times"></i></button></td>';
     }
@@ -653,7 +653,7 @@ function viewBill(id){
         actionArea = '<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-success" onclick="actionBill(\''+id+'\',\'approved\')">Final Approve</button><button class="btn btn-danger" onclick="actionBill(\''+id+'\',\'rejected\')">Reject</button></div>';
     }
 
-    openModal('<div id="printArea"><h3>Billing Invoice</h3><p style="font-size:12px;color:var(--muted)">Proposer: '+(u?u.name:'--')+' | Date: '+b.date+'</p><hr style="margin:12px 0;border-color:var(--border)">' + tablesHtml + '<div style="text-align:right;margin-top:16px;font-weight:800;font-size:16px">Grand Total: BDT '+b.total+'</div></div>'+
+    openModal('<div id="printArea"><h3>Expence Reimbursement</h3><p style="font-size:12px;color:var(--muted)">Requested By: '+(u?u.name:'--')+' | Date: '+b.date+'</p><hr style="margin:12px 0;border-color:var(--border)">' + tablesHtml + '<div style="text-align:right;margin-top:16px;font-weight:800;font-size:16px">Grand Total: BDT '+b.total+'</div></div>'+
         '<div style="margin-top:20px;display:flex;gap:8px"><button class="btn btn-secondary" onclick="printBill()"><i class="fas fa-print"></i> Save as PDF</button><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'+actionArea);
 }
 
@@ -669,7 +669,7 @@ function printBill(){
     var content = document.getElementById('printArea').innerHTML;
     var win = window.open('', '', 'height=700,width=700');
     win.document.write('<html><head><title>Invoice<\/title><style>body{font-family:sans-serif;padding:40px} table{width:100%;border-collapse:collapse;margin-bottom:20px} th,td{border:1px solid #ddd;padding:10px;text-align:left} th{background:#f4f4f4} h4{margin-top:20px;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:5px}<\/style><\/head><body>');
-    win.document.write('<h2>'+APP.config.companyName+' - Billing Invoice<\/h2>');
+    win.document.write('<h2>'+APP.config.companyName+' - Expence Reimbursement<\/h2>');
     win.document.write(content);
     win.document.write('<\/body><\/html>');
     win.document.close(); win.print();
@@ -1113,7 +1113,7 @@ function doReset(){
     APP.policies=[];
     APP.requests=[];
     APP.holidays=getDefaultHolidays();
-    APP.config={companyName:'AMK Advisory',lateTime:'09:30',earlyTime:'18:30',workDays:['Sat','Sun','Mon','Tue','Wed','Thu','Fri'],theme:'dark',clockPos:'br', qrKey: 'AMK_OFFICE_KEY_' + Math.random().toString(36).substr(2, 9)};
+    APP.config={companyName:'AMK Advisory Limited',lateTime:'09:30',earlyTime:'18:30',workDays:['Sat','Sun','Mon','Tue','Wed','Thu','Fri'],theme:'dark',clockPos:'br', qrKey: 'AMK_OFFICE_KEY_' + Math.random().toString(36).substr(2, 9)};
     pushRemoteData();
     clearSession();
     APP.currentUser=null;

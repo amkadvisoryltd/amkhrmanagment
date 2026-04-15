@@ -632,11 +632,20 @@ function saveNewBill(){
 function viewBill(id){
     var b = APP.conveyance.find(function(x){return x.id===id}); if(!b) return;
     var u = findUser(b.userId);
-    
-    var fieldHtml = (b.fieldVisits||[]).map(function(i){ return '<tr><td>'+i.date+'</td><td>'+i.particular+'</td><td>'+i.transport+'</td><td>BDT '+i.bdt+'</td></tr>'}).join('');
-    var snackHtml = (b.snacksLunch||[]).map(function(i){ return '<tr><td>'+i.date+'</td><td>'+i.workRef+'</td><td>'+i.particular+'</td><td>BDT '+i.bdt+'</td></tr>'}).join('');
-    var contHtml = b.contractual ? '<tr><td>'+b.contractual.date+'</td><td>'+b.contractual.particular+'</td><td>--</td><td>BDT '+b.contractual.bdt+'</td></tr>' : '';
-    
+
+    var tablesHtml = '';
+    if(b.fieldVisits && b.fieldVisits.length > 0){
+        tablesHtml += '<h4 style="margin-top:12px;margin-bottom:6px">Field Visit Details</h4><div class="table-wrap" style="margin-bottom:12px"><table><thead><tr><th>Date</th><th>Particular Visit</th><th>Transport</th><th>Amount</th></tr></thead><tbody>' + 
+            b.fieldVisits.map(function(i){ return '<tr><td>'+i.date+'</td><td>'+i.particular+'</td><td>'+i.transport+'</td><td>BDT '+i.bdt+'</td></tr>'}).join('') + '</tbody></table></div>';
+    }
+    if(b.snacksLunch && b.snacksLunch.length > 0){
+        tablesHtml += '<h4 style="margin-top:12px;margin-bottom:6px">Snacks / Lunch Details</h4><div class="table-wrap" style="margin-bottom:12px"><table><thead><tr><th>Date</th><th>Work Ref.</th><th>Particular</th><th>Amount</th></tr></thead><tbody>' + 
+            b.snacksLunch.map(function(i){ return '<tr><td>'+i.date+'</td><td>'+i.workRef+'</td><td>'+i.particular+'</td><td>BDT '+i.bdt+'</td></tr>'}).join('') + '</tbody></table></div>';
+    }
+    if(b.contractual){
+        tablesHtml += '<h4 style="margin-top:12px;margin-bottom:6px">Contractual Daily Bill</h4><div class="table-wrap" style="margin-bottom:12px"><table><thead><tr><th>Date</th><th>Work Description</th><th>Amount</th></tr></thead><tbody><tr><td>'+b.contractual.date+'</td><td>'+b.contractual.particular+'</td><td>BDT '+b.contractual.bdt+'</td></tr></tbody></table></div>';
+    }
+
     var actionArea = '';
     if(b.status === 'accounts_pending' && isAccounts()){
         actionArea = '<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-success" onclick="actionBill(\''+id+'\',\'admin_pending\')">Verify & Forward</button><button class="btn btn-warn" onclick="actionBill(\''+id+'\',\'correction_requested\')">Request Correction</button><button class="btn btn-danger" onclick="actionBill(\''+id+'\',\'rejected\')">Reject</button></div>';
@@ -644,7 +653,7 @@ function viewBill(id){
         actionArea = '<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-success" onclick="actionBill(\''+id+'\',\'approved\')">Final Approve</button><button class="btn btn-danger" onclick="actionBill(\''+id+'\',\'rejected\')">Reject</button></div>';
     }
 
-    openModal('<div id="printArea"><h3>Billing Invoice</h3><p style="font-size:12px;color:var(--muted)">Proposer: '+(u?u.name:'--')+' | Date: '+b.date+'</p><hr style="margin:12px 0;border-color:var(--border)"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Detail</th><th>Transport/Ref</th><th>Amount</th></tr></thead><tbody>'+fieldHtml+snackHtml+contHtml+'</tbody></table></div><div style="text-align:right;margin-top:12px;font-weight:800;font-size:16px">Grand Total: BDT '+b.total+'</div></div>'+
+    openModal('<div id="printArea"><h3>Billing Invoice</h3><p style="font-size:12px;color:var(--muted)">Proposer: '+(u?u.name:'--')+' | Date: '+b.date+'</p><hr style="margin:12px 0;border-color:var(--border)">' + tablesHtml + '<div style="text-align:right;margin-top:16px;font-weight:800;font-size:16px">Grand Total: BDT '+b.total+'</div></div>'+
         '<div style="margin-top:20px;display:flex;gap:8px"><button class="btn btn-secondary" onclick="printBill()"><i class="fas fa-print"></i> Save as PDF</button><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'+actionArea);
 }
 
@@ -659,7 +668,7 @@ function actionBill(id, status){
 function printBill(){
     var content = document.getElementById('printArea').innerHTML;
     var win = window.open('', '', 'height=700,width=700');
-    win.document.write('<html><head><title>Invoice<\/title><style>body{font-family:sans-serif;padding:40px} table{width:100%;border-collapse:collapse} th,td{border:1px solid #ddd;padding:10px;text-align:left} th{background:#f4f4f4}<\/style><\/head><body>');
+    win.document.write('<html><head><title>Invoice<\/title><style>body{font-family:sans-serif;padding:40px} table{width:100%;border-collapse:collapse;margin-bottom:20px} th,td{border:1px solid #ddd;padding:10px;text-align:left} th{background:#f4f4f4} h4{margin-top:20px;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:5px}<\/style><\/head><body>');
     win.document.write('<h2>'+APP.config.companyName+' - Billing Invoice<\/h2>');
     win.document.write(content);
     win.document.write('<\/body><\/html>');
@@ -728,7 +737,7 @@ function renderDashboard(){
 }
 
 /* ===== ATTENDANCE ===== */
-function renderAttendance(){return isAdmin()?renderAdminAtt():renderEmpAtt()}
+function renderAttendance(){return (isAdmin() || isAccounts())?renderAdminAtt():renderEmpAtt()}
 function renderEmpAtt(){
     var mob=isMobileView(),ma=APP.attendance.filter(function(a){return a.userId===APP.currentUser.id}).sort(function(a,b){return b.date.localeCompare(a.date)});
     var now=new Date(),mc=ma.filter(function(a){var d=new Date(a.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()}).length;
@@ -810,7 +819,7 @@ function addAnnouncement(){
 function deleteAnnouncement(id){APP.announcements=APP.announcements.filter(function(a){return a.id!==id});pushRemoteData();showToast('Deleted','info');renderApp()}
 
 /* ===== EMPLOYEES ===== */
-function renderEmployees(){var mob=isMobileView(),au=APP.users.filter(function(u){return u.role!=='admin'}),rf=(document.getElementById('empRF')||{}).value||'',df=rf?au.filter(function(u){return u.role===rf}):au;var rows=df.map(function(u){return '<tr><td style="font-weight:600">'+u.name+'</td>'+(mob?'':'<td style="color:var(--muted);font-size:11px">'+u.username+'</td>')+'<td><span class="badge '+(u.role==='hr'?'badge-pending':'badge-approved')+'">'+u.role+'</span></td>'+(mob?'':'<td style="color:var(--muted)">'+(u.department||'--')+'</td><td><span class="badge '+(u.status==='active'?'badge-approved':'badge-rejected')+'">'+u.status+'</span></td>')+'<td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="showEditEmployee(\''+u.id+'\')"><i class="fas fa-edit"></i></button> <button class="btn btn-secondary btn-sm" onclick="showResetCreds(\''+u.id+'\')"><i class="fas fa-key"></i></button> <button class="btn '+(u.status==='active'?'btn-danger':'btn-success')+' btn-sm" onclick="toggleUserStatus(\''+u.id+'\')"><i class="fas fa-'+(u.status==='active'?'ban':'check')+'"></i></button> <button class="btn btn-danger btn-sm" onclick="confirmDeleteUser(\''+u.id+'\')"><i class="fas fa-trash"></i></button></td></tr>'}).join('');var fh='<select class="input" style="width:130px" id="empRF" onchange="renderApp()"><option value="">All Roles</option><option value="hr"'+(rf==='hr'?' selected':'')+'>HR</option><option value="employee"'+(rf==='employee'?' selected':'')+'>Employee</option></select>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Employees</h2></div><div style="display:flex;gap:6px">'+(mob?'':fh)+'<button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAddEmployee()"><i class="fas fa-plus"></i>'+(mob?'':' Add')+'</button></div></div>'+(mob?'<div style="margin-bottom:10px">'+fh+'</div>':'')+'<div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>Name</th>'+(mob?'':'<th>Username</th>')+'<th>Role</th>'+(mob?'':'<th>Dept</th><th>Status</th>')+'<th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
+function renderEmployees(){var mob=isMobileView(),au=APP.users.filter(function(u){return u.role!=='admin'}),rf=(document.getElementById('empRF')||{}).value||'',df=rf?au.filter(function(u){return u.role===rf}):au;var rows=df.map(function(u){return '<tr><td style="font-weight:600">'+u.name+'</td>'+(mob?'':'<td style="color:var(--muted);font-size:11px">'+u.username+'</td>')+'<td><span class="badge '+(u.role==='hr'?'badge-pending':u.role==='accounts'?'badge-approved':'badge-approved')+'" '+(u.role==='accounts'?'style="background:rgba(14,165,233,.13);color:var(--info)"':'')+'>'+u.role+'</span></td>'+(mob?'':'<td style="color:var(--muted)">'+(u.department||'--')+'</td><td><span class="badge '+(u.status==='active'?'badge-approved':'badge-rejected')+'">'+u.status+'</span></td>')+'<td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="showEditEmployee(\''+u.id+'\')"><i class="fas fa-edit"></i></button> <button class="btn btn-secondary btn-sm" onclick="showResetCreds(\''+u.id+'\')"><i class="fas fa-key"></i></button> <button class="btn '+(u.status==='active'?'btn-danger':'btn-success')+' btn-sm" onclick="toggleUserStatus(\''+u.id+'\')"><i class="fas fa-'+(u.status==='active'?'ban':'check')+'"></i></button> <button class="btn btn-danger btn-sm" onclick="confirmDeleteUser(\''+u.id+'\')"><i class="fas fa-trash"></i></button></td></tr>'}).join('');var fh='<select class="input" style="width:130px" id="empRF" onchange="renderApp()"><option value="">All Roles</option><option value="hr"'+(rf==='hr'?' selected':'')+'>HR</option><option value="accounts"'+(rf==='accounts'?' selected':'')+'>Accounts</option><option value="employee"'+(rf==='employee'?' selected':'')+'>Employee</option></select>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Employees</h2></div><div style="display:flex;gap:6px">'+(mob?'':fh)+'<button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAddEmployee()"><i class="fas fa-plus"></i>'+(mob?'':' Add')+'</button></div></div>'+(mob?'<div style="margin-bottom:10px">'+fh+'</div>':'')+'<div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>Name</th>'+(mob?'':'<th>Username</th>')+'<th>Role</th>'+(mob?'':'<th>Dept</th><th>Status</th>')+'<th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
 function renderProfiles(){
     var mob=isMobileView();
     var users = APP.users.filter(function(u){return u.role!=='admin'}).sort(function(a,b){return (a.name||'').localeCompare(b.name||'')});

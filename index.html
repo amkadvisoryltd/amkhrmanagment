@@ -110,7 +110,7 @@ var SB_HEADERS = {
 
 var APP = {
     currentUser:null, currentPage:'dashboard',
-    users:[], attendance:[], leaves:[], announcements:[], policies:[], requests:[], holidays:[],
+    users:[], attendance:[], leaves:[], announcements:[], policies:[], requests:[], holidays:[], conveyance:[],
     config:{
         companyName:'AMK Advisory', 
         lateTime:'09:30', 
@@ -141,6 +141,7 @@ function fetchRemoteData(){
         var store = d[0].payload;
         APP.users=store.users||[];APP.attendance=store.attendance||[];APP.leaves=store.leaves||[];
         APP.announcements=store.announcements||[];APP.policies=store.policies||[];APP.requests=store.requests||[];
+        APP.conveyance=store.conveyance||[];
         APP.holidays=store.holidays||[];
         if(store.config)APP.config=Object.assign(APP.config, store.config);
         APP.isSyncing=false;APP.isOffline=false;APP.lastSync=new Date();updateSyncIndicator();applyTheme();restoreSession();
@@ -154,7 +155,7 @@ function pushRemoteData(){
     var p = {
         id: 1, // Ensure primary key is included for upsert
         payload: {
-            users:APP.users,attendance:APP.attendance,leaves:APP.leaves,announcements:APP.announcements,
+            users:APP.users,attendance:APP.attendance,leaves:APP.leaves,announcements:APP.announcements,conveyance:APP.conveyance,
             policies:APP.policies,requests:APP.requests,holidays:APP.holidays,config:APP.config
         },
         updated_at: new Date().toISOString()
@@ -240,7 +241,9 @@ function showUserOverview(userId){
 }
 function isAdmin(){return APP.currentUser&&APP.currentUser.role==='admin'}
 function isHR(){return APP.currentUser&&APP.currentUser.role==='hr'}
+function isAccounts(){return APP.currentUser&&APP.currentUser.role==='accounts'}
 function isAdminOrHR(){return isAdmin()||isHR()}
+function isAdminOrAccounts(){return isAdmin()||isAccounts()}
 function isMobileView(){return window.innerWidth<=768}
 
 function applyTheme(){
@@ -385,10 +388,11 @@ function initDrag() {
 function getNavItems(){
     var items=[{key:'dashboard',icon:'fa-th-large',label:'Dashboard'},{key:'attendance',icon:'fa-clock',label:'Attendance'}];
     if(isAdminOrHR())items.push({key:'announcements',icon:'fa-bullhorn',label:'Announcements'});
-    if(isAdmin())items.push({key:'employees',icon:'fa-users-cog',label:'Employees'});
+    if(isAdmin() || isAccounts())items.push({key:'employees',icon:'fa-users-cog',label:'Employees'});
     if(isAdmin())items.push({key:'holidays',icon:'fa-calendar-xmark',label:'Holidays'});
     if(!isAdmin())items.push({key:'leave-app',icon:'fa-calendar-alt',label:'Leave Application'});
     if(isAdminOrHR())items.push({key:'leave-mgmt',icon:'fa-calendar-check',label:'Leave Management'});
+    items.push({key:'billing',icon:'fa-file-invoice-dollar',label:'Billing'});
     // show requests to admin/hr, and to any user who is assigned as delegate for pending requests
     if(isAdminOrHR()) items.push({key:'requests',icon:'fa-hourglass-half',label:'Pending Requests'});
     else {
@@ -402,7 +406,7 @@ function getNavItems(){
     if(isAdmin())items.push({key:'settings',icon:'fa-cog',label:'Settings'});
     return items;
 }
-function renderPageContent(){var p={dashboard:renderDashboard,attendance:renderAttendance,announcements:renderAnnouncements,employees:renderEmployees,holidays:renderHolidays,'leave-app':renderLeaveApp,'leave-mgmt':renderLeaveMgmt,requests:renderRequests,policies:renderPolicies,profile:renderProfile,profiles:renderProfiles,settings:renderSettings};var fn=p[APP.currentPage];return fn?fn():renderDashboard()}
+function renderPageContent(){var p={dashboard:renderDashboard,attendance:renderAttendance,announcements:renderAnnouncements,employees:renderEmployees,holidays:renderHolidays,'leave-app':renderLeaveApp,'leave-mgmt':renderLeaveMgmt,requests:renderRequests,policies:renderPolicies,profile:renderProfile,profiles:renderProfiles,settings:renderSettings,billing:renderBilling};var fn=p[APP.currentPage];return fn?fn():renderDashboard()}
 
 // Profile page renderer
 function renderProfile(){
@@ -560,14 +564,151 @@ function doLogout(t){closeModal();if(t==='sys'){stopLocationReminder();clearSess
 function showEarlyPopup(ot){openModal('<div style="text-align:center;margin-bottom:16px"><div style="width:52px;height:52px;border-radius:50%;background:rgba(239,68,68,.13);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px"><i class="fas fa-clock" style="font-size:20px;color:var(--dan)"></i></div><h3 style="font-size:17px;font-weight:800;margin-bottom:3px">Early Departure</h3><p style="color:var(--muted);font-size:12px">Leaving at <strong style="color:var(--dan)">'+ot+'</strong> — before '+APP.config.earlyTime+'</p></div><div style="margin-bottom:16px"><label class="label">Reason</label><textarea class="input" id="earlyRemark" rows="3" placeholder="Explain..." style="resize:vertical"></textarea></div><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="submitEarlyRemark()"><i class="fas fa-paper-plane"></i> Submit</button>')}
 function submitEarlyRemark(){var r=document.getElementById('earlyRemark').value.trim();if(!r){showToast('Please provide a reason','warning');return}var locName=(LAST_LOCATION&&LAST_LOCATION.name)||APP.currentUser.location||'N/A';var locLink=(LAST_LOCATION&&LAST_LOCATION.link)||null;var lat=(LAST_LOCATION&&LAST_LOCATION.lat)||null;var lon=(LAST_LOCATION&&LAST_LOCATION.lon)||null;APP.requests.push({id:genId(),userId:APP.currentUser.id,type:'early',date:getTodayStr(),time:getNowTime(),remark:r,location:locName,locationLink:locLink,locationLat:lat,locationLon:lon,status:'pending',createdAt:new Date().toISOString()});pushRemoteData();closeModal();showToast('Early departure sent','warning');clearSession();APP.currentUser=null;renderApp()}
 
+/* ===== BILLING (CONVEYANCE) ===== */
+function renderBilling(){
+    var mob=isMobileView(), html='';
+    var list = APP.conveyance.sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)});
+    
+    if(!isAdminOrAccounts()){
+        list = list.filter(function(b){return b.userId === APP.currentUser.id});
+    }
+    var rows = list.map(function(b){
+        var u = findUser(b.userId);
+        var stClass = b.status==='approved'?'approved':(b.status==='rejected'?'rejected':'pending');
+        var actions = '<button class="btn btn-secondary btn-sm" onclick="viewBill(\''+b.id+'\')"><i class="fas fa-eye"></i></button>';
+        if((isAdminOrAccounts() || (b.userId===APP.currentUser.id && b.status==='correction_requested'))){
+            actions += ' <button class="btn btn-secondary btn-sm" onclick="showEditBill(\''+b.id+'\')"><i class="fas fa-edit"></i></button>';
+        }
+        return '<tr><td>'+b.date+'</td><td style="font-weight:600">'+(u?u.name:'--')+'</td><td>BDT '+b.total+'</td><td><span class="badge badge-'+stClass+'">'+b.status.replace('_',' ')+'</span></td><td>'+actions+'</td></tr>';
+    }).join('');
+
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><h2 style="font-size:22px;font-weight:900">Billing & Conveyance</h2></div><button class="btn btn-primary" onclick="showAddBill()"><i class="fas fa-plus"></i> New Request</button></div>';
+    html += '<div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Employee</th><th>Total Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted)">No bills found</td></tr>')+'</tbody></table></div></div>';
+    return html;
+}
+
+function showAddBill(){
+    var html = '<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Unified Billing Request</h3>';
+    html += '<div style="margin-bottom:16px"><h4 class="label">Field Visits</h4><div class="table-wrap"><table><thead><tr><th>Date</th><th>Particular</th><th>Transport</th><th>BDT</th><th></th></tr></thead><tbody id="fieldBody"></tbody></table></div><button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addBillingRow(\'field\')"><i class="fas fa-plus"></i> Add Field Row</button></div>';
+    html += '<div style="margin-bottom:16px"><h4 class="label">Snacks / Lunch</h4><div class="table-wrap"><table><thead><tr><th>Date</th><th>Work Ref</th><th>Particular</th><th>BDT</th><th></th></tr></thead><tbody id="snacksBody"></tbody></table></div><button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addBillingRow(\'snacks\')"><i class="fas fa-plus"></i> Add Snack Row</button></div>';
+    html += '<div style="margin-bottom:20px"><h4 class="label">Contractual Daily Bill (Optional)</h4><div style="display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:8px"><div><input class="input" type="date" id="cDate"></div><div><input class="input" placeholder="Work Description" id="cDesc"></div><div><input class="input" type="number" placeholder="BDT" id="cBdt"></div></div></div>';
+    html += '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveNewBill()"><i class="fas fa-paper-plane"></i> Submit to Accounts</button></div>';
+    openModal(html);
+    addBillingRow('field');
+    addBillingRow('snacks');
+}
+
+function addBillingRow(type, data){
+    var tbody = document.getElementById(type + 'Body'); if(!tbody) return;
+    var tr = document.createElement('tr');
+    if(type==='field'){
+        tr.innerHTML = '<td><input type="date" class="input p-1 f-date" value="'+(data?data.date:getTodayStr())+'"></td><td><input class="input p-1 f-part" value="'+(data?data.particular:'')+'"></td><td><input class="input p-1 f-trans" value="'+(data?data.transport:'')+'"></td><td><input type="number" class="input p-1 f-bdt" value="'+(data?data.bdt:'')+'"></td><td><button onclick="this.closest(\'tr\').remove()" style="color:var(--dan)"><i class="fas fa-times"></i></button></td>';
+    } else {
+        tr.innerHTML = '<td><input type="date" class="input p-1 s-date" value="'+(data?data.date:getTodayStr())+'"></td><td><input class="input p-1 s-ref" value="'+(data?data.workRef:'')+'"></td><td><input class="input p-1 s-part" value="'+(data?data.particular:'')+'"></td><td><input type="number" class="input p-1 s-bdt" value="'+(data?data.bdt:'')+'"></td><td><button onclick="this.closest(\'tr\').remove()" style="color:var(--dan)"><i class="fas fa-times"></i></button></td>';
+    }
+    tbody.appendChild(tr);
+}
+
+function saveNewBill(){
+    var bill = { id: genId(), userId: APP.currentUser.id, date: getTodayStr(), status: 'accounts_pending', createdAt: new Date().toISOString(), fieldVisits: [], snacksLunch: [], contractual: null, total: 0 };
+    
+    document.querySelectorAll('#fieldBody tr').forEach(function(tr){
+        var bdt = parseFloat(tr.querySelector('.f-bdt').value)||0;
+        if(bdt > 0) bill.fieldVisits.push({ date: tr.querySelector('.f-date').value, particular: tr.querySelector('.f-part').value, transport: tr.querySelector('.f-trans').value, bdt: bdt });
+    });
+    document.querySelectorAll('#snacksBody tr').forEach(function(tr){
+        var bdt = parseFloat(tr.querySelector('.s-bdt').value)||0;
+        if(bdt > 0) bill.snacksLunch.push({ date: tr.querySelector('.s-date').value, workRef: tr.querySelector('.s-ref').value, particular: tr.querySelector('.s-part').value, bdt: bdt });
+    });
+    var cBdt = parseFloat(document.getElementById('cBdt').value)||0;
+    if(cBdt > 0) bill.contractual = { date: document.getElementById('cDate').value, particular: document.getElementById('cDesc').value, bdt: cBdt };
+
+    bill.total = bill.fieldVisits.reduce(function(a,b){return a+b.bdt},0) + bill.snacksLunch.reduce(function(a,b){return a+b.bdt},0) + (bill.contractual?bill.contractual.bdt:0);
+    if(bill.total === 0){ showToast('Bill cannot be empty','warning'); return; }
+    
+    APP.conveyance.push(bill); pushRemoteData(); closeModal(); showToast('Bill submitted to accounts','success'); renderApp();
+}
+
+function viewBill(id){
+    var b = APP.conveyance.find(function(x){return x.id===id}); if(!b) return;
+    var u = findUser(b.userId);
+    
+    var fieldHtml = (b.fieldVisits||[]).map(function(i){ return '<tr><td>'+i.date+'</td><td>'+i.particular+'</td><td>'+i.transport+'</td><td>BDT '+i.bdt+'</td></tr>'}).join('');
+    var snackHtml = (b.snacksLunch||[]).map(function(i){ return '<tr><td>'+i.date+'</td><td>'+i.workRef+'</td><td>'+i.particular+'</td><td>BDT '+i.bdt+'</td></tr>'}).join('');
+    var contHtml = b.contractual ? '<tr><td>'+b.contractual.date+'</td><td>'+b.contractual.particular+'</td><td>--</td><td>BDT '+b.contractual.bdt+'</td></tr>' : '';
+    
+    var actionArea = '';
+    if(b.status === 'accounts_pending' && isAccounts()){
+        actionArea = '<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-success" onclick="actionBill(\''+id+'\',\'admin_pending\')">Verify & Forward</button><button class="btn btn-warn" onclick="actionBill(\''+id+'\',\'correction_requested\')">Request Correction</button><button class="btn btn-danger" onclick="actionBill(\''+id+'\',\'rejected\')">Reject</button></div>';
+    } else if(b.status === 'admin_pending' && isAdmin()){
+        actionArea = '<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-success" onclick="actionBill(\''+id+'\',\'approved\')">Final Approve</button><button class="btn btn-danger" onclick="actionBill(\''+id+'\',\'rejected\')">Reject</button></div>';
+    }
+
+    openModal('<div id="printArea"><h3>Billing Invoice</h3><p style="font-size:12px;color:var(--muted)">Proposer: '+(u?u.name:'--')+' | Date: '+b.date+'</p><hr style="margin:12px 0;border-color:var(--border)"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Detail</th><th>Transport/Ref</th><th>Amount</th></tr></thead><tbody>'+fieldHtml+snackHtml+contHtml+'</tbody></table></div><div style="text-align:right;margin-top:12px;font-weight:800;font-size:16px">Grand Total: BDT '+b.total+'</div></div>'+
+        '<div style="margin-top:20px;display:flex;gap:8px"><button class="btn btn-secondary" onclick="printBill()"><i class="fas fa-print"></i> Save as PDF</button><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'+actionArea);
+}
+
+function actionBill(id, status){
+    var b = APP.conveyance.find(function(x){return x.id===id}); if(!b) return;
+    b.status = status;
+    b.processedAt = new Date().toISOString();
+    b.processedBy = APP.currentUser.id;
+    pushRemoteData(); closeModal(); showToast('Status updated to '+status.replace('_',' '),'info'); renderApp();
+}
+
+function printBill(){
+    var content = document.getElementById('printArea').innerHTML;
+    var win = window.open('', '', 'height=700,width=700');
+    win.document.write('<html><head><title>Invoice<\/title><style>body{font-family:sans-serif;padding:40px} table{width:100%;border-collapse:collapse} th,td{border:1px solid #ddd;padding:10px;text-align:left} th{background:#f4f4f4}<\/style><\/head><body>');
+    win.document.write('<h2>'+APP.config.companyName+' - Billing Invoice<\/h2>');
+    win.document.write(content);
+    win.document.write('<\/body><\/html>');
+    win.document.close(); win.print();
+}
+
+function showEditBill(id){
+    if(isHR()) { showToast('HR does not have access to modify billing', 'error'); return; }
+    var b = APP.conveyance.find(function(x){return x.id===id}); if(!b) return;
+    showAddBill();
+    document.getElementById('modalBox').querySelector('h3').innerText = 'Edit Billing Request';
+    document.getElementById('fieldBody').innerHTML = ''; document.getElementById('snacksBody').innerHTML = '';
+    (b.fieldVisits||[]).forEach(function(d){ addBillingRow('field', d) });
+    (b.snacksLunch||[]).forEach(function(d){ addBillingRow('snacks', d) });
+    if(b.contractual){
+        document.getElementById('cDate').value = b.contractual.date;
+        document.getElementById('cDesc').value = b.contractual.particular;
+        document.getElementById('cBdt').value = b.contractual.bdt;
+    }
+    var btn = document.getElementById('modalBox').querySelector('.btn-primary');
+    btn.onclick = function(){ saveEditedBill(id) };
+}
+
+function saveEditedBill(id){
+    APP.conveyance = APP.conveyance.filter(function(x){return x.id!==id});
+    saveNewBill();
+    var b = APP.conveyance[APP.conveyance.length-1];
+    b.id = id;
+    if(b.status === 'correction_requested') b.status = 'accounts_pending';
+}
+
+function deleteBill(id){
+    if(!confirm('Permanently delete this bill?')) return;
+    APP.conveyance = APP.conveyance.filter(function(x){return x.id!==id});
+    pushRemoteData(); closeModal(); showToast('Bill deleted','info'); renderApp();
+}
+
 /* ===== DASHBOARD ===== */
 function renderDashboard(){
     var mob=isMobileView(),hs=mob?'18px':'22px';var hln=isTodayHoliday();
-    if(isAdmin()){
+    if(isAdmin() || isAccounts()){
         var ec=APP.users.filter(function(u){return u.role!=='admin'}).length,ac=APP.users.filter(function(u){return u.role!=='admin'&&u.status==='active'}).length;
         var ta=APP.attendance.filter(function(a){return a.date===getTodayStr()}),pc=ta.filter(function(a){return a.status!=='absent'}).length,lc=ta.filter(function(a){return a.late}).length;
         var pr=APP.requests.filter(function(r){return r.status.indexOf('pending')!==-1}).length,pl=APP.leaves.filter(function(l){return l.status==='pending'}).length;
         var st=[{l:'Employees',v:ec,s:ac+' active',c:'c1'},{l:'Present',v:pc,s:'of '+ec,c:'c2'},{l:'Late',v:lc,s:'attention',c:'c3'},{l:'Pending',v:pr+pl,s:pr+' att + '+pl+' leave',c:'c4'}];
+        if(isAccounts()) {
+            var bp = APP.conveyance.filter(function(b){return b.status==='accounts_pending'}).length;
+            st.push({l:'Bills',v:bp,s:'pending verification',c:'c1'});
+        }
         var sh=st.map(function(s){return '<div class="card stat-card '+s.c+'"><p style="font-size:10px;color:var(--muted);font-weight:600">'+s.l+'</p><p style="font-size:'+(mob?'24px':'28px')+';font-weight:900;margin-top:2px">'+s.v+'</p><p style="font-size:9.5px;color:var(--muted);margin-top:2px">'+s.s+'</p></div>'}).join('');
         var ar=ta.length?ta.slice(0,8).map(function(a){var u=findUser(a.userId);var sb=a.late?'<span class="badge badge-pending">Late</span>':(a.status==='active'?'<span class="badge" style="background:rgba(14,165,233,.13);color:var(--info)">Active</span>':'<span class="badge badge-approved">Present</span>');return '<tr><td style="font-weight:600">'+(u?('<a href="javascript:void(0)" onclick="showUserOverview(\''+u.id+'\')">'+u.name+'</a>'):'--')+'</td><td>'+(a.loginTime||'--')+'</td><td>'+sb+'</td></tr>'}).join(''):'<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px;font-size:12px">No records</td></tr>';
         var ah=APP.announcements.length?APP.announcements.slice(0,4).map(function(a){return '<div style="padding:9px;background:var(--bg);border-radius:8px;margin-bottom:6px;border-left:3px solid '+(a.priority==='high'?'var(--dan)':'var(--accent)')+'"><div style="font-size:12px;font-weight:600">'+a.title+'</div><div style="font-size:10px;color:var(--muted)">'+a.date+(a.targetNames?' — <span style="color:var(--info)">'+a.targetNames+'</span>':'')+'</div></div>'}).join(''):'<p style="color:var(--muted);text-align:center;padding:16px;font-size:12px">None</p>';
@@ -713,12 +854,9 @@ function getLeaveBalance(userId){
     return {casualUsed:casualUsed,casualRemaining:Math.max(0,casualTotal-casualUsed),casualTotal:casualTotal,sickUsed:sickUsed,sickRemaining:Math.max(0,sickTotal-sickUsed),sickTotal:sickTotal};
 }
 
+/* ===== LEAVE APP ===== */
 function renderLeaveApp(){var mob=isMobileView(),bal=getLeaveBalance(APP.currentUser.id),ml=APP.leaves.filter(function(l){return l.userId===APP.currentUser.id}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)});var rows=ml.map(function(l){return '<tr><td style="font-weight:600">'+l.fromDate+'</td><td>'+l.toDate+'</td>'+(mob?'':'<td>'+l.days+'</td>')+'<td style="font-size:10px">'+l.type+'</td><td><span class="badge badge-'+(l.status==='approved'?'approved':l.status==='rejected'?'rejected':'pending')+'">'+l.status+'</span></td></tr>';}).join('');if(!ml.length)rows='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">None</td></tr>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Leave Application</h2><div style="font-size:12px;color:var(--muted);margin-top:6px">Casual: '+bal.casualRemaining+' of '+bal.casualTotal+' days — Sick: '+bal.sickRemaining+' of '+bal.sickTotal+' days</div></div><button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAL()"><i class="fas fa-plus"></i>'+(mob?'':' Apply')+'</button></div><div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>From</th><th>To</th>'+(mob?'':'<th>Days</th>')+'<th>Type</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
-function showAL(){
-    var users = APP.users.filter(function(u){return u.id!== (APP.currentUser?APP.currentUser.id:null) && u.status==='active' && u.role!=='admin'});
-    var options = '<option value="">Select responsible colleague</option>' + users.map(function(u){return '<option value="'+u.id+'">'+u.name+' ('+(u.department||'')+')</option>'}).join('');
-    openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Apply for Leave</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">From</label><input class="input" id="lF" type="date"></div><div><label class="label">To (for Casual/Sick)</label><input class="input" id="lT" type="date"></div></div><div style="margin-bottom:12px"><label class="label">Type</label><select class="input" id="lTp"><option>Casual Leave</option><option>Sick Leave</option><option>Half Day</option></select></div><div style="margin-bottom:12px"><label class="label">If Half Day: Session</label><select class="input" id="lSession"><option value="morning">Morning</option><option value="afternoon">Afternoon</option></select></div><div style="margin-bottom:12px"><label class="label">If Half Day applies to</label><select class="input" id="lHalfFor"><option>Casual Leave</option><option>Sick Leave</option></select></div><div style="margin-bottom:12px"><label class="label">Assign responsibility to</label><select class="input" id="lDelegate">'+options+'</select></div><div style="margin-bottom:16px"><label class="label">Reason</label><textarea class="input" id="lRs" rows="3" placeholder="Reason..." style="resize:vertical"></textarea></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="subL()"><i class="fas fa-paper-plane"></i> Submit</button></div>')
-}
+function showAL(){var users=APP.users.filter(function(u){return u.id!==(APP.currentUser?APP.currentUser.id:null)&&u.status==='active'&&u.role!=='admin'});var options='<option value="">Select responsible colleague</option>'+users.map(function(u){return '<option value="'+u.id+'">'+u.name+' ('+(u.department||'')+')</option>'}).join('');openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Apply for Leave</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">From</label><input class="input" id="lF" type="date"></div><div><label class="label">To (for Casual/Sick)</label><input class="input" id="lT" type="date"></div></div><div style="margin-bottom:12px"><label class="label">Type</label><select class="input" id="lTp"><option>Casual Leave</option><option>Sick Leave</option><option>Half Day</option></select></div><div style="margin-bottom:12px"><label class="label">If Half Day: Session</label><select class="input" id="lSession"><option value="morning">Morning</option><option value="afternoon">Afternoon</option></select></div><div style="margin-bottom:12px"><label class="label">If Half Day applies to</label><select class="input" id="lHalfFor"><option>Casual Leave</option><option>Sick Leave</option></select></div><div style="margin-bottom:12px"><label class="label">Assign responsibility to</label><select class="input" id="lDelegate">'+options+'</select></div><div style="margin-bottom:16px"><label class="label">Reason</label><textarea class="input" id="lRs" rows="3" placeholder="Reason..." style="resize:vertical"></textarea></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="subL()"><i class="fas fa-paper-plane"></i> Submit</button></div>')}
 function subL(){var f=document.getElementById('lF').value,t=document.getElementById('lT').value,tp=document.getElementById('lTp').value,r=document.getElementById('lRs').value.trim();if(!f||!tp||!r){showToast('Fill all fields','warning');return}if(tp!=='Half Day' && !t){showToast('Select To date for date based leaves','warning');return}if(tp!=='Half Day' && t<f){showToast('Invalid dates','error');return}
     var days=1;
     if(tp==='Half Day'){
@@ -939,7 +1077,7 @@ function svSet(){
 function printQR(){
     var url = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(APP.config.qrKey);
     var w = window.open('','','width=400,height=500');
-    w.document.write('<html><body style="text-align:center;padding-top:50px;font-family:sans-serif"><h2>'+APP.config.companyName+'</h2><p>Scan to Register Attendance</p><img src="'+url+'" style="width:250px"><p style="margin-top:20px;font-size:12px;color:#666">QR Key: '+APP.config.qrKey+'</p><script>window.onload=function(){window.print();setTimeout(function(){window.close()},500)}<\/script><\/body><\/html>');
+    w.document.write('<html><body style="text-align:center;padding-top:50px;font-family:sans-serif"><h2>'+APP.config.companyName+'<\/h2><p>Scan to Register Attendance<\/p><img src="'+url+'" style="width:250px"><p style="margin-top:20px;font-size:12px;color:#666">QR Key: '+APP.config.qrKey+'<\/p><script>window.onload=function(){window.print();setTimeout(function(){window.close()},500)}<\/script><\/body><\/html>');
     w.document.close();
 }
 function downloadQR(){

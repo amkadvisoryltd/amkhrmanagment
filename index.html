@@ -152,15 +152,39 @@ function fetchRemoteData(){
 function pushRemoteData(){
     APP.isSyncing=true;updateSyncIndicator();
     var p = {
+        id: 1, // Ensure primary key is included for upsert
         payload: {
             users:APP.users,attendance:APP.attendance,leaves:APP.leaves,announcements:APP.announcements,
             policies:APP.policies,requests:APP.requests,holidays:APP.holidays,config:APP.config
         },
         updated_at: new Date().toISOString()
     };
-    return fetch(SB_URL + '/rest/v1/hr_store?id=eq.1', { method: 'PATCH', headers: SB_HEADERS, body: JSON.stringify(p) })
-    .then(function(r){return r.ok}).then(function(ok){APP.isSyncing=false;APP.isOffline=!ok;APP.lastSync=new Date();updateSyncIndicator();return ok})
-    .catch(function(e){console.error(e);APP.isSyncing=false;APP.isOffline=true;updateSyncIndicator();return false});
+
+    // Use POST with resolution=merge-duplicates to perform an "upsert" via PostgREST.
+    // This ensures row 1 is created if it doesn't exist, or updated if it does.
+    var upsertHeaders = Object.assign({}, SB_HEADERS, {
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+    });
+
+    return fetch(SB_URL + '/rest/v1/hr_store', { 
+        method: 'POST', 
+        headers: upsertHeaders, 
+        body: JSON.stringify(p) 
+    })
+    .then(function(r){
+        if(!r.ok) return r.json().then(function(err){ throw err; });
+        return true;
+    })
+    .then(function(ok){
+        APP.isSyncing=false; APP.isOffline=false; APP.lastSync=new Date(); updateSyncIndicator();
+        return ok;
+    })
+    .catch(function(e){
+        console.error("Supabase Save Error:", e);
+        APP.isSyncing=false; APP.isOffline=true; updateSyncIndicator();
+        showToast("Save failed: Check RLS policies in Supabase dashboard", "error");
+        return false;
+    });
 }
 function updateSyncIndicator(){var el=document.getElementById('syncIndicator');if(!el)return;if(APP.isSyncing){el.innerHTML='<i class="fas fa-spinner fa-spin" style="color:var(--warn)"></i> Syncing...';el.style.borderColor='var(--warn)'}else if(APP.isOffline){el.innerHTML='<i class="fas fa-exclamation-circle" style="color:var(--dan)"></i> Offline';el.style.borderColor='var(--dan)'}else{var t=APP.lastSync?APP.lastSync.toLocaleTimeString():'--:--';el.innerHTML='<span class="sync-dot"></span> Host DB — '+t;el.style.borderColor='var(--border)'}}
 function saveSession(){if(APP.currentUser){localStorage.setItem('amk_session',JSON.stringify(APP.currentUser));localStorage.setItem('amk_last_user_id',APP.currentUser.id)}}
@@ -674,7 +698,6 @@ function confirmDeleteUser(id){var u=findUser(id);if(!u)return;openModal('<div s
 function delU(id){APP.users=APP.users.filter(function(u){return u.id!==id});APP.attendance=APP.attendance.filter(function(a){return a.userId!==id});APP.leaves=APP.leaves.filter(function(l){return l.userId!==id});APP.requests=APP.requests.filter(function(r){return r.userId!==id});pushRemoteData();closeModal();showToast('Deleted','info');renderApp()}
 
 /* ===== LEAVE APP ===== */
-function renderLeaveApp(){var mob=isMobileView(),ml=APP.leaves.filter(function(l){return l.userId===APP.currentUser.id}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)});var rows=ml.map(function(l){return '<tr><td style="font-weight:600">'+l.fromDate+'</td><td>'+l.toDate+'</td>'+(mob?'':'<td>'+l.days+'</td>')+'<td style="font-size:10px">'+l.type+'</td><td><span class="badge badge-'+(l.status==='approved'?'approved':l.status==='rejected'?'rejected':'pending')+'">'+l.status+'</span></td></tr>';}).join('');if(!ml.length)rows='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">None</td></tr>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Leave Application</h2></div><button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAL()"><i class="fas fa-plus"></i>'+(mob?'':' Apply')+'</button></div><div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>From</th><th>To</th>'+(mob?'':'<th>Days</th>')+'<th>Type</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
 function getLeaveBalance(userId){
     var year = new Date().getFullYear();
     var used = APP.leaves.filter(function(l){return l.userId===userId && (l.status==='approved' || l.status==='pending') && new Date(l.createdAt).getFullYear()===year}).reduce(function(acc,l){return acc + (parseFloat(l.days)||0)},0);
@@ -687,7 +710,6 @@ function getLeaveBalance(userId){
 }
 
 function renderLeaveApp(){var mob=isMobileView(),bal=getLeaveBalance(APP.currentUser.id),ml=APP.leaves.filter(function(l){return l.userId===APP.currentUser.id}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt)});var rows=ml.map(function(l){return '<tr><td style="font-weight:600">'+l.fromDate+'</td><td>'+l.toDate+'</td>'+(mob?'':'<td>'+l.days+'</td>')+'<td style="font-size:10px">'+l.type+'</td><td><span class="badge badge-'+(l.status==='approved'?'approved':l.status==='rejected'?'rejected':'pending')+'">'+l.status+'</span></td></tr>';}).join('');if(!ml.length)rows='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">None</td></tr>';return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><h2 style="font-size:'+(mob?'18px':'22px')+';font-weight:900">Leave Application</h2><div style="font-size:12px;color:var(--muted);margin-top:6px">Casual: '+bal.casualRemaining+' of '+bal.casualTotal+' days — Sick: '+bal.sickRemaining+' of '+bal.sickTotal+' days</div></div></div><button class="btn btn-primary'+(mob?' btn-sm':'')+'" onclick="showAL()"><i class="fas fa-plus"></i>'+(mob?'':' Apply')+'</button></div><div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table><thead><tr><th>From</th><th>To</th>'+(mob?'':'<th>Days</th>')+'<th>Type</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>'}
-function showAL(){openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Apply for Leave</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">From</label><input class="input" id="lF" type="date"></div><div><label class="label">To (for Casual/Sick)</label><input class="input" id="lT" type="date"></div></div><div style="margin-bottom:12px"><label class="label">Type</label><select class="input" id="lTp"><option>Casual Leave</option><option>Sick Leave</option><option>Half Day</option></select></div><div style="margin-bottom:12px"><label class="label">If Half Day: Session</label><select class="input" id="lSession"><option value="morning">Morning</option><option value="afternoon">Afternoon</option></select></div><div style="margin-bottom:12px"><label class="label">If Half Day applies to</label><select class="input" id="lHalfFor"><option>Casual Leave</option><option>Sick Leave</option></select></div><div style="margin-bottom:16px"><label class="label">Reason</label><textarea class="input" id="lRs" rows="3" placeholder="Reason..." style="resize:vertical"></textarea></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="subL()"><i class="fas fa-paper-plane"></i> Submit</button></div>')}
 function showAL(){
     var users = APP.users.filter(function(u){return u.id!== (APP.currentUser?APP.currentUser.id:null) && u.status==='active' && u.role!=='admin'});
     var options = '<option value="">Select responsible colleague</option>' + users.map(function(u){return '<option value="'+u.id+'">'+u.name+' ('+(u.department||'')+')</option>'}).join('');

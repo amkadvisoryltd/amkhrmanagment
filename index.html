@@ -596,24 +596,35 @@ function renderBilling(){
 
 function showAddBill(){
     var html = '<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Unified Billing Request</h3>';
-    html += '<div style="margin-bottom:16px"><h4 class="label">Field Visits</h4><div class="table-wrap"><table><thead><tr><th>Date</th><th>Particular</th><th>AMK Ref</th><th>Transport</th><th>BDT</th><th></th></tr></thead><tbody id="fieldBody"></tbody></table></div><button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addBillingRow(\'field\')"><i class="fas fa-plus"></i> Add Field Row</button></div>';
-    html += '<div style="margin-bottom:16px"><h4 class="label">Snacks / Lunch</h4><div class="table-wrap"><table><thead><tr><th>Date</th><th>Work Ref</th><th>Particular</th><th>BDT</th><th></th></tr></thead><tbody id="snacksBody"></tbody></table></div><button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addBillingRow(\'snacks\')"><i class="fas fa-plus"></i> Add Snack Row</button></div>';
-    html += '<div style="margin-bottom:20px"><h4 class="label">Contractual Daily Bill (Optional)</h4><div style="display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:8px"><div><input class="input" type="date" id="cDate"></div><div><input class="input" placeholder="Work Description" id="cDesc"></div><div><input class="input" type="number" placeholder="BDT" id="cBdt"></div></div></div>';
+    html += '<div style="margin-bottom:16px"><h4 class="label">Field Visits</h4><div class="table-wrap"><table><thead><tr><th>Date</th><th>Particular</th><th>AMK Ref</th><th>Transport</th><th>BDT</th><th></th></tr></thead><tbody id="fieldBody"></tbody></table></div><div style="text-align:right;font-size:12px;font-weight:700;margin-top:4px">Sub Total: BDT <span id="subField">0</span></div><button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addBillingRow(\'field\')"><i class="fas fa-plus"></i> Add Field Row</button></div>';
+    html += '<div style="margin-bottom:16px"><h4 class="label">Snacks / Lunch</h4><div class="table-wrap"><table><thead><tr><th>Date</th><th>Work Ref</th><th>Particular</th><th>BDT</th><th></th></tr></thead><tbody id="snacksBody"></tbody></table></div><div style="text-align:right;font-size:12px;font-weight:700;margin-top:4px">Sub Total: BDT <span id="subSnack">0</span></div><button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="addBillingRow(\'snacks\')"><i class="fas fa-plus"></i> Add Snack Row</button></div>';
+    html += '<div style="margin-bottom:20px"><h4 class="label">Contractual Daily Bill (Optional)</h4><div style="display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:8px"><div><input class="input" type="date" id="cDate"></div><div><input class="input" placeholder="Work Description" id="cDesc"></div><div><input class="input" type="number" placeholder="BDT" id="cBdt" oninput="updateBillTotals()"></div></div></div>';
+    html += '<div style="text-align:right;margin-bottom:16px;font-weight:800;font-size:16px;color:var(--accent)">Grand Total: BDT <span id="grandTotalDisplay">0</span></div>';
     html += '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveNewBill()"><i class="fas fa-paper-plane"></i> Submit to Accounts</button></div>';
     openModal(html);
     addBillingRow('field');
     addBillingRow('snacks');
 }
 
+function updateBillTotals(){
+    var fTotal = 0; document.querySelectorAll('.f-bdt').forEach(function(i){fTotal += parseFloat(i.value)||0});
+    var sTotal = 0; document.querySelectorAll('.s-bdt').forEach(function(i){sTotal += parseFloat(i.value)||0});
+    var cTotal = parseFloat(document.getElementById('cBdt').value)||0;
+    var sf = document.getElementById('subField'); if(sf) sf.innerText = fTotal;
+    var ss = document.getElementById('subSnack'); if(ss) ss.innerText = sTotal;
+    var gt = document.getElementById('grandTotalDisplay'); if(gt) gt.innerText = (fTotal + sTotal + cTotal);
+}
+
 function addBillingRow(type, data){
     var tbody = document.getElementById(type + 'Body'); if(!tbody) return;
     var tr = document.createElement('tr');
     if(type==='field'){
-        tr.innerHTML = '<td><input type="date" class="input p-1 f-date" value="'+(data?data.date:getTodayStr())+'"></td><td><input class="input p-1 f-part" value="'+(data?data.particular:'')+'"></td><td><input class="input p-1 f-trans"  value="'+(data?data.transport:'')+'"></td><td><input type="number" class="input p-1 f-bdt" value="'+(data?data.bdt:'')+'"></td><td><button onclick="this.closest(\'tr\').remove()" style="color:var(--dan)"><i class="fas fa-times"></i></button></td>';
+        tr.innerHTML = '<td><input type="date" class="input p-1 f-date" value="'+(data?data.date:getTodayStr())+'"></td><td><input class="input p-1 f-part" value="'+(data?data.particular:'')+'"></td><td><input class="input p-1 f-trans"  value="'+(data?data.transport:'')+'"></td><td><input type="number" class="input p-1 f-bdt" value="'+(data?data.bdt:'')+'" oninput="updateBillTotals()"></td><td><button onclick="this.closest(\'tr\').remove();updateBillTotals()" style="color:var(--dan)"><i class="fas fa-times"></i></button></td>';
     } else {
-        tr.innerHTML = '<td><input type="date" class="input p-1 s-date" value="'+(data?data.date:getTodayStr())+'"></td><td><input class="input p-1 s-ref" value="'+(data?data.workRef:'')+'"></td><td><input class="input p-1 s-part" value="'+(data?data.particular:'')+'"></td><td><input type="number" class="input p-1 s-bdt" value="'+(data?data.bdt:'')+'"></td><td><button onclick="this.closest(\'tr\').remove()" style="color:var(--dan)"><i class="fas fa-times"></i></button></td>';
+        tr.innerHTML = '<td><input type="date" class="input p-1 s-date" value="'+(data?data.date:getTodayStr())+'"></td><td><input class="input p-1 s-ref" value="'+(data?data.workRef:'')+'"></td><td><input class="input p-1 s-part" value="'+(data?data.particular:'')+'"></td><td><input type="number" class="input p-1 s-bdt" value="'+(data?data.bdt:'')+'" oninput="updateBillTotals()"></td><td><button onclick="this.closest(\'tr\').remove();updateBillTotals()" style="color:var(--dan)"><i class="fas fa-times"></i></button></td>';
     }
     tbody.appendChild(tr);
+    updateBillTotals();
 }
 
 function saveNewBill(){
@@ -639,19 +650,33 @@ function saveNewBill(){
 function viewBill(id){
     var b = APP.conveyance.find(function(x){return x.id===id}); if(!b) return;
     var u = findUser(b.userId);
+    var verifier = b.verifiedBy ? findUser(b.verifiedBy) : null;
+    var approver = b.approvedBy ? findUser(b.approvedBy) : null;
 
     var tablesHtml = '';
     if(b.fieldVisits && b.fieldVisits.length > 0){
+        var subF = b.fieldVisits.reduce(function(a,v){return a+(v.bdt||0)},0);
         tablesHtml += '<h4 style="margin-top:12px;margin-bottom:6px">Field Visit Details</h4><div class="table-wrap" style="margin-bottom:12px"><table><thead><tr><th>Date</th><th>Particular Visit</th><th>Transport</th><th>Amount</th></tr></thead><tbody>' + 
-            b.fieldVisits.map(function(i){ return '<tr><td>'+i.date+'</td><td>'+i.particular+'</td><td>'+i.transport+'</td><td>BDT '+i.bdt+'</td></tr>'}).join('') + '</tbody></table></div>';
+            b.fieldVisits.map(function(i){ return '<tr><td>'+i.date+'</td><td>'+i.particular+'</td><td>'+i.transport+'</td><td>BDT '+i.bdt+'</td></tr>'}).join('') + 
+            '</tbody><tfoot style="background:var(--card2)"><tr><th colspan="3" style="text-align:right">Sub Total</th><th>BDT '+subF+'</th></tr></tfoot></table></div>';
     }
     if(b.snacksLunch && b.snacksLunch.length > 0){
+        var subS = b.snacksLunch.reduce(function(a,v){return a+(v.bdt||0)},0);
         tablesHtml += '<h4 style="margin-top:12px;margin-bottom:6px">Snacks / Lunch Details</h4><div class="table-wrap" style="margin-bottom:12px"><table><thead><tr><th>Date</th><th>Work Ref.</th><th>Particular</th><th>Amount</th></tr></thead><tbody>' + 
-            b.snacksLunch.map(function(i){ return '<tr><td>'+i.date+'</td><td>'+i.workRef+'</td><td>'+i.particular+'</td><td>BDT '+i.bdt+'</td></tr>'}).join('') + '</tbody></table></div>';
+            b.snacksLunch.map(function(i){ return '<tr><td>'+i.date+'</td><td>'+i.workRef+'</td><td>'+i.particular+'</td><td>BDT '+i.bdt+'</td></tr>'}).join('') + 
+            '</tbody><tfoot style="background:var(--card2)"><tr><th colspan="3" style="text-align:right">Sub Total</th><th>BDT '+subS+'</th></tr></tfoot></table></div>';
     }
     if(b.contractual){
-        tablesHtml += '<h4 style="margin-top:12px;margin-bottom:6px">Contractual Daily Bill</h4><div class="table-wrap" style="margin-bottom:12px"><table><thead><tr><th>Date</th><th>Work Description</th><th>Amount</th></tr></thead><tbody><tr><td>'+b.contractual.date+'</td><td>'+b.contractual.particular+'</td><td>BDT '+b.contractual.bdt+'</td></tr></tbody></table></div>';
+        tablesHtml += '<h4 style="margin-top:12px;margin-bottom:6px">Contractual Daily Bill</h4><div class="table-wrap" style="margin-bottom:12px"><table><thead><tr><th>Date</th><th>Work Description</th><th>Amount</th></tr></thead><tbody><tr><td>'+b.contractual.date+'</td><td>'+b.contractual.particular+'</td><td>BDT '+b.contractual.bdt+'</td></tr></tbody><tfoot style="background:var(--card2)"><tr><th colspan="2" style="text-align:right">Sub Total</th><th>BDT '+b.contractual.bdt+'</th></tr></tfoot></table></div>';
     }
+
+    var approvedStamp = b.status === 'approved' ? '<div style="text-align:center;color:#0d9488;font-weight:900;font-size:24px;border:4px solid #0d9488;padding:10px;width:fit-content;margin:0 auto 20px;transform:rotate(-5deg);opacity:0.8;text-transform:uppercase">Approved Bill</div>' : '';
+
+    var sigHtml = '<div style="display:flex;margin-top:40px;gap:20px;border-top:1px solid #ddd;padding-top:20px">' +
+        '<div style="flex:1;text-align:center"><div>' + (u && u.signature ? '<img src="'+u.signature+'" style="max-height:50px">' : '<div style="height:50px"></div>') + '</div><div style="font-weight:700;font-size:12px;border-top:1px solid #000;padding-top:5px">Submitted by</div><div style="font-size:10px">'+(u?u.name:'--')+'</div></div>' +
+        '<div style="flex:1;text-align:center"><div>' + (verifier && verifier.signature ? '<img src="'+verifier.signature+'" style="max-height:50px">' : '<div style="height:50px"></div>') + '</div><div style="font-weight:700;font-size:12px;border-top:1px solid #000;padding-top:5px">Reviewed by</div><div style="font-size:10px">'+(verifier?verifier.name:'--')+'</div></div>' +
+        '<div style="flex:1;text-align:center"><div>' + (approver && approver.signature ? '<img src="'+approver.signature+'" style="max-height:50px">' : '<div style="height:50px"></div>') + '</div><div style="font-weight:700;font-size:12px;border-top:1px solid #000;padding-top:5px">Approved by</div><div style="font-size:10px">'+(approver?approver.name:'--')+'</div></div>' +
+        '</div>';
 
     var actionArea = '';
     if(b.status === 'accounts_pending' && isAccounts()){
@@ -660,13 +685,18 @@ function viewBill(id){
         actionArea = '<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-success" onclick="actionBill(\''+id+'\',\'approved\')">Final Approve</button><button class="btn btn-danger" onclick="actionBill(\''+id+'\',\'rejected\')">Reject</button></div>';
     }
 
-    openModal('<div id="printArea"><h3>Expence Reimbursement</h3><p style="font-size:12px;color:var(--muted)">Requested By: '+(u?u.name:'--')+' | Date: '+b.date+'</p><hr style="margin:12px 0;border-color:var(--border)">' + tablesHtml + '<div style="text-align:right;margin-top:16px;font-weight:800;font-size:16px">Grand Total: BDT '+b.total+'</div></div>'+
+    openModal('<div id="printArea">' + approvedStamp + '<h3>Expense Reimbursement</h3><p style="font-size:12px;color:var(--muted)">Requested By: '+(u?u.name:'--')+' | Date: '+b.date+'</p><hr style="margin:12px 0;border-color:var(--border)">' + tablesHtml + '<div style="text-align:right;margin-top:16px;font-weight:800;font-size:16px">Grand Total: BDT '+b.total+'</div>' + sigHtml + '</div>'+
         '<div style="margin-top:20px;display:flex;gap:8px"><button class="btn btn-secondary" onclick="printBill()"><i class="fas fa-print"></i> Save as PDF</button><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'+actionArea);
 }
 
 function actionBill(id, status){
     var b = APP.conveyance.find(function(x){return x.id===id}); if(!b) return;
     b.status = status;
+    if(status === 'admin_pending'){
+        b.verifiedBy = APP.currentUser.id;
+    } else if(status === 'approved'){
+        b.approvedBy = APP.currentUser.id;
+    }
     b.processedAt = new Date().toISOString();
     b.processedBy = APP.currentUser.id;
     pushRemoteData(); closeModal(); showToast('Status updated to '+status.replace('_',' '),'info'); renderApp();
@@ -674,12 +704,25 @@ function actionBill(id, status){
 
 function printBill(){
     var content = document.getElementById('printArea').innerHTML;
-    var win = window.open('', '', 'height=700,width=700');
-    win.document.write('<html><head><title>Invoice<\/title><style>body{font-family:sans-serif;padding:40px} table{width:100%;border-collapse:collapse;margin-bottom:20px} th,td{border:1px solid #ddd;padding:10px;text-align:left} th{background:#f4f4f4} h4{margin-top:20px;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:5px}<\/style><\/head><body>');
-    win.document.write('<h2>'+APP.config.companyName+' - Expence Reimbursement<\/h2>');
-    win.document.write(content);
+    var win = window.open('', '', 'height=800,width=900');
+    win.document.write('<html><head><title>Expense Reimbursement - ' + APP.config.companyName + '<\/title>');
+    win.document.write('<style>');
+    win.document.write('body{font-family:"DM Sans",sans-serif;margin:0;padding:15mm;color:#1e293b;line-height:1.2;font-size:10pt}');
+    win.document.write('@page{size:A4 portrait;margin:0}');
+    win.document.write('table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:9pt;table-layout:auto}');
+    win.document.write('th,td{border:1px solid #cbd5e1;padding:5px;text-align:left}');
+    win.document.write('th{background:#f8fafc;font-weight:700;font-size:8pt;text-transform:uppercase;color:#475569}');
+    win.document.write('h2{font-size:16pt;font-weight:900;border-bottom:2px solid #e8a308;padding-bottom:5px;margin:0 0 15px 0}');
+    win.document.write('h3{font-size:12pt;margin:0} h4{font-size:10pt;margin:10px 0 5px 0;border-bottom:1px solid #e2e8f0}');
+    win.document.write('.table-wrap{border:none!important;overflow:visible!important}');
+    win.document.write('img{max-height:40px!important}');
+    win.document.write('@media print{body{-webkit-print-color-adjust:exact;zoom:0.92}}');
+    win.document.write('<\/style><\/head><body>');
+    win.document.write('<h2>'+APP.config.companyName+' - Expense Reimbursement<\/h2>');
+    win.document.write('<div style="width:100%;page-break-inside:avoid">' + content + '<\/div>');
     win.document.write('<\/body><\/html>');
-    win.document.close(); win.print();
+    win.document.close();
+    setTimeout(function(){ win.print(); }, 500);
 }
 
 function showEditBill(id){
@@ -851,6 +894,7 @@ function showFullProfileAdmin(id){
 function showAddEmployee(){openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Create User</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Name *</label><input class="input" id="eN" placeholder="Name"></div><div><label class="label">Username *</label><input class="input" id="eU" placeholder="Username"></div><div><label class="label">Password *</label><input class="input" id="eP" placeholder="Password"></div><div><label class="label">Role</label><select class="input" id="eR"><option value="employee">Employee</option><option value="hr">HR</option></select></div><div><label class="label">Email</label><input class="input" id="eE" placeholder="Email"></div><div><label class="label">Phone</label><input class="input" id="ePh" placeholder="Phone"></div><div><label class="label">Department</label><input class="input" id="eD" placeholder="Dept"></div><div><label class="label">Designation</label><input class="input" id="eDs" placeholder="Designation"></div><div><label class="label">Joining Date</label><input class="input" id="eJ" type="date"></div><div><label class="label">Gender</label><select class="input" id="eG"><option>Male</option><option>Female</option><option>Other</option></select></div></div><div style="margin-bottom:16px"><label class="label">Address</label><input class="input" id="eA" placeholder="Address"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="addEmp()"><i class="fas fa-user-plus"></i> Create</button></div>')}
 function addEmp(){var n=document.getElementById('eN').value.trim(),u=document.getElementById('eU').value.trim(),p=document.getElementById('eP').value.trim();if(!n||!u||!p){showToast('Name, username, password required','warning');return}if(APP.users.find(function(x){return x.username===u})){showToast('Username exists','error');return}APP.users.push({id:genId(),username:u,password:p,name:n,role:document.getElementById('eR').value,email:document.getElementById('eE').value.trim(),phone:document.getElementById('ePh').value.trim(),department:document.getElementById('eD').value.trim(),designation:document.getElementById('eDs').value.trim(),joinDate:document.getElementById('eJ').value,gender:document.getElementById('eG').value,address:document.getElementById('eA').value.trim(),status:'active',dob:'',location:null});pushRemoteData();closeModal();showToast('Created','success');renderApp()}
 function showEditEmployee(id){var u=findUser(id);if(!u)return;var familyVal=(u.family||[]).map(function(f){return (f.name||'')+' | '+(f.relation||'')+' | '+(f.phone||'')}).join('\n');var skillsVal=Array.isArray(u.skills)?u.skills.join(', '):(u.skills||'');openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Edit — '+u.name+'</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Name</label><input class="input" id="xN" value="'+u.name+'"></div><div><label class="label">Username</label><input class="input" id="xU" value="'+u.username+'"></div><div><label class="label">Role</label><select class="input" id="xR"><option value="employee"'+(u.role==='employee'?' selected':'')+'>Employee</option><option value="hr"'+(u.role==='hr'?' selected':'')+'>HR</option><option value="accounts"'+(u.role==='accounts'?' selected':'')+'>Accounts</option></select></div><div><label class="label">Email</label><input class="input" id="xE" value="'+(u.email||'')+'"></div><div><label class="label">Phone</label><input class="input" id="xPh" value="'+(u.phone||'')+'"></div><div><label class="label">Department</label><input class="input" id="xD" value="'+(u.department||'')+'"></div><div><label class="label">Designation</label><input class="input" id="xDs" value="'+(u.designation||'')+'"></div><div><label class="label">Joining</label><input class="input" id="xJ" type="date" value="'+(u.joinDate||'')+'"></div><div><label class="label">Gender</label><select class="input" id="xG">'+['Male','Female','Other'].map(function(g){return '<option'+(u.gender===g?' selected':'')+'>'+g+'</option>';}).join('')+'</select></div><div><label class="label">DOB</label><input class="input" id="xDob" type="date" value="'+(u.dob||'')+'"></div><div><label class="label">Casual quota</label><input class="input" id="xCQ" type="number" min="0" value="'+(u.casualQuota!=null?u.casualQuota:'')+'"></div><div><label class="label">Sick quota</label><input class="input" id="xSQ" type="number" min="0" value="'+(u.sickQuota!=null?u.sickQuota:'')+'"></div><div><label class="label">Address</label><input class="input" id="xA" value="'+(u.address||'')+'"></div></div><div style="margin-bottom:12px"><label class="label">Family (Name | Relation | Phone)</label><textarea class="input" id="xFamily" rows="3" style="resize:vertical">'+familyVal+'</textarea></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Emergency Name</label><input class="input" id="xEName" value="'+(u.emergency?u.emergency.name||'':'')+'"></div><div><label class="label">Relation</label><input class="input" id="xERel" value="'+(u.emergency?u.emergency.relation||'':'')+'"></div><div><label class="label">Phone</label><input class="input" id="xEPh" value="'+(u.emergency?u.emergency.phone||'':'')+'"></div></div><div style="margin-bottom:12px"><label class="label">Qualification</label><input class="input" id="xQual" value="'+(u.qualification||'')+'"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Education</label><input class="input" id="xEdu" value="'+(u.education||'')+'"></div><div><label class="label">Exp (yrs)</label><input class="input" id="xExp" type="number" min="0" value="'+(u.experienceYears||'')+'"></div></div><div style="margin-bottom:12px"><label class="label">Skills</label><input class="input" id="xSkills" value="'+skillsVal+'"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEE(\''+id+'\')"><i class="fas fa-save"></i> Save</button></div>')}
+function showEditEmployee(id){var u=findUser(id);if(!u)return;var familyVal=(u.family||[]).map(function(f){return (f.name||'')+' | '+(f.relation||'')+' | '+(f.phone||'')}).join('\n');var skillsVal=Array.isArray(u.skills)?u.skills.join(', '):(u.skills||'');openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Edit — '+u.name+'</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Name</label><input class="input" id="xN" value="'+u.name+'"></div><div><label class="label">Username</label><input class="input" id="xU" value="'+u.username+'"></div><div><label class="label">Role</label><select class="input" id="xR"><option value="employee"'+(u.role==='employee'?' selected':'')+'>Employee</option><option value="hr"'+(u.role==='hr'?' selected':'')+'>HR</option><option value="accounts"'+(u.role==='accounts'?' selected':'')+'>Accounts</option></select></div><div><label class="label">Email</label><input class="input" id="xE" value="'+(u.email||'')+'"></div><div><label class="label">Phone</label><input class="input" id="xPh" value="'+(u.phone||'')+'"></div><div><label class="label">Department</label><input class="input" id="xD" value="'+(u.department||'')+'"></div><div><label class="label">Designation</label><input class="input" id="xDs" value="'+(u.designation||'')+'"></div><div><label class="label">Joining</label><input class="input" id="xJ" type="date" value="'+(u.joinDate||'')+'"></div><div><label class="label">Gender</label><select class="input" id="xG">'+['Male','Female','Other'].map(function(g){return '<option'+(u.gender===g?' selected':'')+'>'+g+'</option>';}).join('')+'</select></div><div><label class="label">DOB</label><input class="input" id="xDob" type="date" value="'+(u.dob||'')+'"></div><div><label class="label">Casual quota</label><input class="input" id="xCQ" type="number" min="0" value="'+(u.casualQuota!=null?u.casualQuota:'')+'"></div><div><label class="label">Sick quota</label><input class="input" id="xSQ" type="number" min="0" value="'+(u.sickQuota!=null?u.sickQuota:'')+'"></div><div><label class="label">Address</label><input class="input" id="xA" value="'+(u.address||'')+'"></div></div><div style="margin-bottom:12px"><label class="label">Digital Signature</label><input type="file" accept="image/*" onchange="uploadUserSignature(this, \''+id+'\')" class="input"></div>' + (u.signature ? '<div style="margin-bottom:12px"><img src="'+u.signature+'" style="max-height:60px;background:#fff;padding:5px;border-radius:4px"></div>' : '') + '<div style="margin-bottom:12px"><label class="label">Family (Name | Relation | Phone)</label><textarea class="input" id="xFamily" rows="3" style="resize:vertical">'+familyVal+'</textarea></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Emergency Name</label><input class="input" id="xEName" value="'+(u.emergency?u.emergency.name||'':'')+'"></div><div><label class="label">Relation</label><input class="input" id="xERel" value="'+(u.emergency?u.emergency.relation||'':'')+'"></div><div><label class="label">Phone</label><input class="input" id="xEPh" value="'+(u.emergency?u.emergency.phone||'':'')+'"></div></div><div style="margin-bottom:12px"><label class="label">Qualification</label><input class="input" id="xQual" value="'+(u.qualification||'')+'"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"><div><label class="label">Education</label><input class="input" id="xEdu" value="'+(u.education||'')+'"></div><div><label class="label">Exp (yrs)</label><input class="input" id="xExp" type="number" min="0" value="'+(u.experienceYears||'')+'"></div></div><div style="margin-bottom:12px"><label class="label">Skills</label><input class="input" id="xSkills" value="'+skillsVal+'"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEE(\''+id+'\')"><i class="fas fa-save"></i> Save</button></div>')}
 function saveEE(id){var u=findUser(id);if(!u)return;var nu=document.getElementById('xU').value.trim();if(nu!==u.username&&APP.users.find(function(x){return x.username===nu})){showToast('Taken','error');return}u.name=document.getElementById('xN').value.trim()||u.name;u.username=nu||u.username;u.role=document.getElementById('xR').value;u.email=document.getElementById('xE').value.trim();u.phone=document.getElementById('xPh').value.trim();u.department=document.getElementById('xD').value.trim();u.designation=document.getElementById('xDs').value.trim();u.joinDate=document.getElementById('xJ').value;u.gender=document.getElementById('xG').value;u.dob=document.getElementById('xDob').value;var cq=document.getElementById('xCQ').value, sq=document.getElementById('xSQ').value;u.casualQuota=cq!==''?parseFloat(cq):null;u.sickQuota=sq!==''?parseFloat(sq):null;u.address=document.getElementById('xA').value.trim();var fam=[];(document.getElementById('xFamily').value||'').split('\n').map(function(l){return l.trim()}).filter(Boolean).forEach(function(ln){var parts=ln.split('|').map(function(p){return p.trim()});if(parts.length>=1)fam.push({name:parts[0]||'',relation:parts[1]||'',phone:parts[2]||''})});u.family=fam;var eN=document.getElementById('xEName').value.trim(),eP=document.getElementById('xEPh').value.trim();if(eN||eP)u.emergency={name:eN,relation:document.getElementById('xERel').value.trim(),phone:eP};else delete u.emergency;u.qualification=document.getElementById('xQual').value.trim();u.education=document.getElementById('xEdu').value.trim();u.experienceYears=document.getElementById('xExp').value||null;u.skills=document.getElementById('xSkills').value.split(',').map(function(s){return s.trim()}).filter(Boolean);u.profileCompleted=true;if(u.id===APP.currentUser.id)APP.currentUser=u;pushRemoteData();closeModal();showToast('Updated','success');renderApp()}
 function toggleUserStatus(id){var u=findUser(id);if(!u)return;u.status=u.status==='active'?'inactive':'active';pushRemoteData();showToast(u.status==='active'?'Activated':'Deactivated','info');renderApp()}
 function showResetCreds(id){var u=findUser(id);if(!u)return;openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Reset Credentials — '+u.name+'</h3><div style="margin-bottom:12px"><label class="label">Username</label><input class="input" id="rU" value="'+u.username+'"></div><div style="margin-bottom:16px"><label class="label">Password</label><input class="input" id="rP" value="'+u.password+'"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveRC(\''+id+'\')"><i class="fas fa-key"></i> Update</button></div>')}
@@ -1136,6 +1180,19 @@ function regenQR(){
 function uploadLogo(inp){
     var f = inp.files && inp.files[0]; if(!f) return; var r=new FileReader(); r.onload=function(){ APP.config.logo = r.result; pushRemoteData(); showToast('Logo uploaded','success'); renderApp(); }; r.readAsDataURL(f);
 }
+function uploadUserSignature(inp, userId){
+    var f = inp.files && inp.files[0]; if(!f) return;
+    var r=new FileReader();
+    r.onload=function(){
+        var u=findUser(userId);
+        if(u){
+            u.signature=r.result;
+            if(APP.currentUser&&APP.currentUser.id===u.id)APP.currentUser.signature=r.result;
+            pushRemoteData(); showToast('Signature updated','success'); renderApp();
+        }
+    };
+    r.readAsDataURL(f);
+}
 function confirmReset(){openModal('<div style="text-align:center;margin-bottom:16px"><h3 style="font-size:17px;font-weight:800;margin-bottom:4px">Reset Everything?</h3><p style="color:var(--muted);font-size:12px">Permanently deletes ALL data.</p></div><div style="display:flex;gap:8px;justify-content:center"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-danger" onclick="doReset()"><i class="fas fa-radiation"></i> Destroy All</button></div>')}
 function doReset(){
     APP.users=[{id:'admin_1',username:'amkadvisory',password:'amk123',name:'AMK Admin',role:'admin',email:'admin@amkadvisory.com',phone:'',department:'Management',designation:'Managing Director',joinDate:'2024-01-01',status:'active',gender:'',address:'',dob:'',location:null}];
@@ -1195,6 +1252,7 @@ function showEditProfile(){
             '<div><label class="label">DOB</label><input class="input" id="pDb" type="date" value="'+(u.dob||'')+'"></div>'+
             '<div><label class="label">Address</label><input class="input" id="pAd" value="'+(u.address||'')+'"></div>'+
         '</div>'+
+        '<div style="margin-bottom:12px"><label class="label">Digital Signature</label><input type="file" accept="image/*" onchange="uploadUserSignature(this, \''+u.id+'\')" class="input"></div>' + (u.signature ? '<div style="margin-bottom:12px"><img src="'+u.signature+'" style="max-height:60px;background:#fff;padding:5px;border-radius:4px"></div>' : '') +
         quotaFields+
         '<div style="margin-bottom:12px"><label class="label">Family Members (one per line: Name | Relation | Phone)</label><textarea class="input" id="pFamily" rows="4" placeholder="e.g. Jane Doe | Spouse | 0123456789">'+familyVal+'</textarea></div>'+
         '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">'+

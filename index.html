@@ -355,6 +355,10 @@ function renderApp(){
     html+='<div class="sync-indicator" id="syncIndicator"><span class="sync-dot"></span> Connecting...</div>';
     html+='<main class="main-content"><div class="page-inner" style="padding:'+(mob?'60px 14px 24px':'22px 26px 40px')+'">'+hl+renderPageContent()+'</div></main>';
     document.getElementById('rootEl').innerHTML=html;updateSyncIndicator();startClock();initDrag();setTimeout(checkLocReq,1000);
+    if(APP.currentUser && !isAdmin()) {
+        if(!LAST_LOCATION) startLocationReminder();
+        checkDailyAttendance();
+    }
 }
 
 function startClock(){
@@ -459,27 +463,6 @@ async function doLogin(){
         user.welcomeNotified = true;
         pushRemoteData();
     }
-
-    // Initial Location Check
-    if(!user.location){
-        showToast('Fetching location...','info');
-        user.location = await getLocationPlace();
-        pushRemoteData();
-    }
-    
-    if(!LAST_LOCATION) startLocationReminder();
-
-    var rec=APP.attendance.find(function(a){return a.userId===user.id&&a.date===getTodayStr()});
-    if(!rec && !activeLeave){ // Attendance won't count during leave days
-        var tn=getNowTime(),il=tn>APP.config.lateTime;
-            var locName = (LAST_LOCATION && LAST_LOCATION.name) || (user.location || 'N/A');
-            var locLink = (LAST_LOCATION && LAST_LOCATION.link) || null;
-            var lat = (LAST_LOCATION && LAST_LOCATION.lat) || null;
-            var lon = (LAST_LOCATION && LAST_LOCATION.lon) || null;
-            APP.attendance.push({id:user.id+'_'+getTodayStr(),userId:user.id,date:getTodayStr(),loginTime:tn,logoutTime:null,location:locName,locationLink:locLink,locationLat:lat,locationLon:lon,status:'active',late:il});
-        pushRemoteData();
-        if(user.role!=='admin'&&il){showLatePopup(tn);return}
-    }
     saveSession();showToast('Welcome, '+user.name.split(' ')[0]+'!','success');renderApp();
 }
 
@@ -519,17 +502,41 @@ async function handleQRAutoRegistration(user) {
     doLoginWithUser(user); 
 }
 function doLoginWithUser(user){
-    var today = getTodayStr();
-    var rec = APP.attendance.find(function(a){return a.userId===user.id&&a.date===today});
-    if(!rec){
-        var tn=getNowTime(),il=tn>APP.config.lateTime;
-        var locName=(LAST_LOCATION&&LAST_LOCATION.name)||user.location||'N/A';
-        APP.attendance.push({id:user.id+'_'+today,userId:user.id,date:today,loginTime:tn,status:'active',late:il,location:locName,locationLink:LAST_LOCATION?LAST_LOCATION.link:null});
-        pushRemoteData();
-    }
     saveSession();
     renderApp();
     showToast('Automatic Login Success!', 'success');
+}
+
+var ATT_CHECK_LOCK = false;
+async function checkDailyAttendance() {
+    if(!APP.currentUser || isAdmin() || ATT_CHECK_LOCK) return;
+    var today = getTodayStr(), user = APP.currentUser;
+    var rec = APP.attendance.find(function(a){return a.userId===user.id && a.date===today});
+    if(rec) return;
+
+    ATT_CHECK_LOCK = true;
+    var activeLeave = APP.leaves.find(function(l) { return l.userId === user.id && l.status === 'approved' && today >= l.fromDate && today <= l.toDate; });
+    if(activeLeave) { ATT_CHECK_LOCK = false; return; }
+    
+    // Fresh location fetch for the new day's attendance
+    showToast('Recording attendance for ' + today + '...', 'info');
+    await getLocationPlace();
+
+    var tn=getNowTime(), il=tn>APP.config.lateTime;
+    var locName = (LAST_LOCATION && LAST_LOCATION.name) || (user.location || 'N/A');
+    var locLink = (LAST_LOCATION && LAST_LOCATION.link) || null;
+    var lat = (LAST_LOCATION && LAST_LOCATION.lat) || null;
+    var lon = (LAST_LOCATION && LAST_LOCATION.lon) || null;
+
+    APP.attendance.push({
+        id:user.id+'_'+today, userId:user.id, date:today, loginTime:tn, logoutTime:null, 
+        location:locName, locationLink:locLink, locationLat:lat, locationLon:lon, status:'active', late:il
+    });
+    
+    await pushRemoteData();
+    ATT_CHECK_LOCK = false;
+    renderApp();
+    if(il) showLatePopup(tn);
 }
 
 var locReminderInterval = null;
@@ -973,9 +980,33 @@ function dismissRequest(id){ APP.requests=APP.requests.filter(function(x){return
 function confirmClearRequests(){ openModal('<div style="text-align:center;margin-bottom:16px"><h3 style="font-size:17px;font-weight:800;margin-bottom:4px">Clear History?</h3><p style="color:var(--muted);font-size:12px">This will permanently delete all request history.</p></div><div style="display:flex;gap:8px;justify-content:center"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-danger" onclick="clearRequests()"><i class="fas fa-trash-alt"></i> Clear All</button></div>'); }
 function clearRequests(){ APP.requests=[]; pushRemoteData(); closeModal(); showToast('Request history cleared','info'); renderApp(); }
 
+function requestDailyLocation(userId) {
+    var today = getTodayStr();
+    var attId = userId + '_' + today;
+    requestUserLocation(userId, attId);
+}
 function requestUserLocation(userId, attId){ var u=findUser(userId); if(!u) return; u.pendingLocReq=attId; pushRemoteData(); showToast('Location request sent to '+u.name, 'info'); }
-async function fulfillLocReq(attId){ var att=APP.attendance.find(function(a){return a.id===attId}); if(!att) return; showToast('Capturing location...', 'info'); var loc=await getLocationPlace(); if(LAST_LOCATION){ att.location=LAST_LOCATION.name; att.locationLink=LAST_LOCATION.link; att.locationLat=LAST_LOCATION.lat; att.locationLon=LAST_LOCATION.lon; var u=findUser(APP.currentUser.id); if(u) delete u.pendingLocReq; delete APP.currentUser.pendingLocReq; pushRemoteData(); closeModal(); showToast('Location shared and recorded', 'success'); renderApp(); } }
-function checkLocReq(){ if(APP.currentUser && APP.currentUser.pendingLocReq){ var attId=APP.currentUser.pendingLocReq; var att=APP.attendance.find(function(a){return a.id===attId}); if(att){ openModal('<div style="text-align:center;padding:10px"><i class="fas fa-map-marker-alt" style="font-size:36px;color:var(--warn);margin-bottom:12px"></i><h3 style="font-weight:800">Location Request</h3><p style="font-size:12px;color:var(--muted);margin-top:6px">Admin has requested your location for the attendance on <strong>'+att.date+'</strong>.</p><button class="btn btn-primary" style="margin-top:16px;width:100%" onclick="fulfillLocReq(\''+attId+'\')">Share Current Location</button></div>'); } } }
+async function fulfillLocReq(attId){
+    var att=APP.attendance.find(function(a){return a.id===attId});
+    showToast('Capturing location...', 'info');
+    await getLocationPlace();
+    if(LAST_LOCATION){
+        if(!att) {
+            var tn=getNowTime(), il=tn>APP.config.lateTime;
+            att = {
+                id:attId, userId:APP.currentUser.id, date:getTodayStr(), loginTime:tn, logoutTime:null,
+                location:LAST_LOCATION.name, locationLink:LAST_LOCATION.link, locationLat:LAST_LOCATION.lat, locationLon:LAST_LOCATION.lon,
+                status:'active', late:il
+            };
+            APP.attendance.push(att);
+        } else {
+            att.location=LAST_LOCATION.name; att.locationLink=LAST_LOCATION.link; att.locationLat=LAST_LOCATION.lat; att.locationLon=LAST_LOCATION.lon;
+        }
+        var u=findUser(APP.currentUser.id); if(u) delete u.pendingLocReq; delete APP.currentUser.pendingLocReq;
+        await pushRemoteData(); closeModal(); showToast('Location shared and recorded', 'success'); renderApp();
+    }
+}
+function checkLocReq(){ if(APP.currentUser && APP.currentUser.pendingLocReq){ var attId=APP.currentUser.pendingLocReq; var att=APP.attendance.find(function(a){return a.id===attId}); openModal('<div style="text-align:center;padding:10px"><i class="fas fa-map-marker-alt" style="font-size:36px;color:var(--warn);margin-bottom:12px"></i><h3 style="font-weight:800">Location Request</h3><p style="font-size:12px;color:var(--muted);margin-top:6px">Admin has requested your location '+(att?'for attendance on <strong>'+att.date+'</strong>':'for <strong>Today</strong>')+'.</p><button class="btn btn-primary" style="margin-top:16px;width:100%" onclick="fulfillLocReq(\''+attId+'\')">Share Current Location</button></div>'); } }
 
 // Admin: Edit Attendance Record (including location)
 function showEditAttendanceRecord(id) {
@@ -984,6 +1015,7 @@ function showEditAttendanceRecord(id) {
     var user = findUser(att.userId);
     var locationInfo = att.location ? renderLocationField(att) : 'No location recorded.';
     var captureLocationBtn = !att.location ? '<button class="btn btn-primary btn-sm" onclick="captureAndApplyLocation(\''+att.id+'\')"><i class="fas fa-map-marker-alt"></i> Capture My Location</button>' : '';
+    var requestLocationBtn = '<button class="btn btn-warning btn-sm" onclick="requestUserLocation(\''+att.userId+'\', \''+att.id+'\');closeModal()" title="Request from Employee"><i class="fas fa-paper-plane"></i> Request</button>';
 
     openModal('<h3 style="font-size:17px;font-weight:800;margin-bottom:16px">Edit Attendance Record</h3>'+
         '<div style="margin-bottom:12px"><label class="label">Employee</label><input class="input" value="'+(user?user.name:'--')+'" readonly></div>'+
@@ -997,7 +1029,7 @@ function showEditAttendanceRecord(id) {
                 '<option value="absent"'+(att.status==='absent'?' selected':'')+'>Absent</option>'+
             '</select></div>'+
         '</div>'+
-        '<div style="margin-bottom:16px"><label class="label">Location</label><div style="display:flex;align-items:center;gap:8px">'+locationInfo+captureLocationBtn+'</div></div>'+
+        '<div style="margin-bottom:16px"><label class="label">Location</label><div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">'+locationInfo+captureLocationBtn+requestLocationBtn+'</div></div>'+
         '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveAttendanceRecord(\''+att.id+'\')"><i class="fas fa-save"></i> Save</button></div>'
     );
 }

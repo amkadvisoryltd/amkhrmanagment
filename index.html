@@ -317,8 +317,11 @@ function toggleSidebarMobile(){var s=document.querySelector('.sidebar');if(!s){r
 function renderApp(){
     if(!APP.currentUser){renderLogin();return}
     
+    var freshUser = findUser(APP.currentUser.id);
+    if(freshUser) APP.currentUser = freshUser;
+
     // Auto-logout if user has been deleted from the database
-    if(APP.users.length > 0 && !findUser(APP.currentUser.id)) {
+    if(APP.users.length > 0 && !freshUser) {
         stopLocationReminder();
         clearSession();
         APP.currentUser = null;

@@ -675,7 +675,7 @@ function viewBill(id){
 
     var approvedStamp = b.status === 'approved' ? '<div style="text-align:center;color:#0d9488;font-weight:900;font-size:24px;border:4px solid #0d9488;padding:10px;width:fit-content;margin:0 auto 20px;transform:rotate(-5deg);opacity:0.8;text-transform:uppercase">Approved Bill</div>' : '';
 
-    var sigHtml = '<div style="display:flex;margin-top:40px;gap:20px;border-top:1px solid #ddd;padding-top:20px">' +
+    var sigHtml = '<div style="display:flex;margin-top:20px;gap:20px;border-top:1px solid #ddd;padding-top:10px;page-break-inside:avoid">' +
         '<div style="flex:1;text-align:center"><div>' + (u && u.signature ? '<img src="'+u.signature+'" style="max-height:50px">' : '<div style="height:50px"></div>') + '</div><div style="font-weight:700;font-size:12px;border-top:1px solid #000;padding-top:5px">Submitted by</div><div style="font-size:10px">'+(u?u.name:'--')+'</div></div>' +
         '<div style="flex:1;text-align:center"><div>' + (verifier && verifier.signature ? '<img src="'+verifier.signature+'" style="max-height:50px">' : '<div style="height:50px"></div>') + '</div><div style="font-weight:700;font-size:12px;border-top:1px solid #000;padding-top:5px">Reviewed by</div><div style="font-size:10px">'+(verifier?verifier.name:'--')+'</div></div>' +
         '<div style="flex:1;text-align:center"><div>' + (approver && approver.signature ? '<img src="'+approver.signature+'" style="max-height:50px">' : '<div style="height:50px"></div>') + '</div><div style="font-weight:700;font-size:12px;border-top:1px solid #000;padding-top:5px">Approved by</div><div style="font-size:10px">'+(approver?approver.name:'--')+'</div></div>' +
@@ -710,16 +710,17 @@ function printBill(){
     var win = window.open('', '', 'height=800,width=900');
     win.document.write('<html><head><title>Expense Reimbursement - ' + APP.config.companyName + '<\/title>');
     win.document.write('<style>');
-    win.document.write('body{font-family:"DM Sans",sans-serif;margin:0;padding:15mm;color:#1e293b;line-height:1.2;font-size:10pt}');
+    win.document.write('body{font-family:"DM Sans",sans-serif;margin:0;padding:10mm;color:#1e293b;line-height:1.2;font-size:9pt}');
     win.document.write('@page{size:A4 portrait;margin:0}');
-    win.document.write('table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:9pt;table-layout:auto}');
-    win.document.write('th,td{border:1px solid #cbd5e1;padding:5px;text-align:left}');
+    win.document.write('table{width:100%;border-collapse:collapse;margin-bottom:6px;font-size:8.5pt;table-layout:auto}');
+    win.document.write('th,td{border:1px solid #cbd5e1;padding:4px;text-align:left}');
     win.document.write('th{background:#f8fafc;font-weight:700;font-size:8pt;text-transform:uppercase;color:#475569}');
-    win.document.write('h2{font-size:16pt;font-weight:900;border-bottom:2px solid #e8a308;padding-bottom:5px;margin:0 0 15px 0}');
-    win.document.write('h3{font-size:12pt;margin:0} h4{font-size:10pt;margin:10px 0 5px 0;border-bottom:1px solid #e2e8f0}');
+    win.document.write('h2{font-size:14pt;font-weight:900;border-bottom:2px solid #e8a308;padding-bottom:4px;margin:0 0 10px 0}');
+    win.document.write('h3{font-size:11pt;margin:0} h4{font-size:9pt;margin:8px 0 4px 0;border-bottom:1px solid #e2e8f0;page-break-after:avoid}');
     win.document.write('.table-wrap{border:none!important;overflow:visible!important}');
-    win.document.write('img{max-height:40px!important}');
-    win.document.write('@media print{body{-webkit-print-color-adjust:exact;zoom:0.92}}');
+    win.document.write('img{max-height:45px!important}');
+    win.document.write('img{max-height:80px!important}');
+    win.document.write('@media print{body{-webkit-print-color-adjust:exact;zoom:0.82}}');
     win.document.write('<\/style><\/head><body>');
     win.document.write('<h2>'+APP.config.companyName+' - Expense Reimbursement<\/h2>');
     win.document.write('<div style="width:100%;page-break-inside:avoid">' + content + '<\/div>');
@@ -1255,7 +1256,7 @@ function showEditProfile(){
             '<div><label class="label">DOB</label><input class="input" id="pDb" type="date" value="'+(u.dob||'')+'"></div>'+
             '<div><label class="label">Address</label><input class="input" id="pAd" value="'+(u.address||'')+'"></div>'+
         '</div>'+
-        '<div style="margin-bottom:12px"><label class="label">Digital Signature</label><input type="file" accept="image/*" onchange="uploadUserSignature(this, \''+u.id+'\')" class="input"></div>' + (u.signature ? '<div style="margin-bottom:12px"><img src="'+u.signature+'" style="max-height:60px;background:#fff;padding:5px;border-radius:4px"></div>' : '') +
+        '<div style="margin-bottom:12px"><label class="label">Digital Signature</label><input type="file" accept="image/*" onchange="uploadUserSignature(this, \''+u.id+'\')" class="input"></div>' + (u.signature ? '<div style="margin-bottom:12px"><img src="'+u.signature+'" style="max-height:80px;background:#fff;padding:5px;border-radius:4px"></div>' : '') +
         quotaFields+
         '<div style="margin-bottom:12px"><label class="label">Family Members (one per line: Name | Relation | Phone)</label><textarea class="input" id="pFamily" rows="4" placeholder="e.g. Jane Doe | Spouse | 0123456789">'+familyVal+'</textarea></div>'+
         '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">'+

@@ -986,25 +986,38 @@ function svLA(id){
     var l=APP.leaves.find(function(x){return x.id===id});
     if(!l) return;
     var nf = document.getElementById('xLF').value, nt = document.getElementById('xLT').value;
+    var statusChanged = (l.status !== document.getElementById('xLS').value);
     var dateChanged = (l.fromDate !== nf || l.toDate !== nt);
     
+    // Auto-calculate days
+    var days = 1;
+    if(l.type === 'Half Day') {
+        days = 0.5;
+        nt = nf;
+    } else {
+        days = Math.ceil((new Date(nt) - new Date(nf)) / 86400000) + 1;
+    }
+
     l.fromDate = nf;
     l.toDate = nt;
     l.status = document.getElementById('xLS').value;
-    var nd = parseFloat((document.getElementById('xLD')||{}).value) || l.days || 0;
-    l.days = nd;
+    l.days = days;
     l.actionBy = APP.currentUser.id;
 
-    if(dateChanged && l.status === 'approved') {
-        APP.requests.push({
+    if((dateChanged || statusChanged)) {
+        // Send as an Announcement to the user instead of a Request
+        APP.announcements.push({
             id: genId(),
-            userId: l.userId,
-            type: 'notification',
-            title: 'Leave Dates Adjusted',
-            content: 'Your leave dates have been updated by Admin to: ' + l.fromDate + ' to ' + l.toDate,
-            status: 'pending',
-            createdAt: new Date().toISOString()
+            title: 'Leave Update: ' + l.fromDate,
+            content: 'Your leave request status is now "' + l.status + '". Dates: ' + l.fromDate + ' to ' + l.toDate + ' (' + l.days + ' days).',
+            date: getTodayStr(),
+            createdAt: new Date().toISOString(),
+            postedBy: APP.currentUser.id,
+            priority: 'high',
+            targetIds: [l.userId],
+            targetNames: [findUser(l.userId) ? findUser(l.userId).name : 'User']
         });
+
         // Update tracker for welcome back popup
         var u = findUser(l.userId);
         if(u) { u.lastLeaveEndDate = l.toDate; u.welcomeNotified = false; }

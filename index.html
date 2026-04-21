@@ -539,6 +539,10 @@ async function checkDailyAttendance() {
     var rec = APP.attendance.find(function(a){return a.userId===user.id && a.date===today});
     if(rec) return;
 
+    // Attendance window: 08:00 AM to 08:00 PM (20:00)
+    var tn=getNowTime();
+    if(tn < "08:00" || tn > "20:00") return;
+
     ATT_CHECK_LOCK = true;
     var activeLeave = APP.leaves.find(function(l) { return l.userId === user.id && l.status === 'approved' && today >= l.fromDate && today <= l.toDate; });
     if(activeLeave) { ATT_CHECK_LOCK = false; return; }
@@ -547,7 +551,7 @@ async function checkDailyAttendance() {
     showToast('Recording attendance for ' + today + '...', 'info');
     await getLocationPlace();
 
-    var tn=getNowTime(), il=tn>APP.config.lateTime;
+    var il=tn>APP.config.lateTime;
     var locName = (LAST_LOCATION && LAST_LOCATION.name) || (user.location || 'N/A');
     var locLink = (LAST_LOCATION && LAST_LOCATION.link) || null;
     var lat = (LAST_LOCATION && LAST_LOCATION.lat) || null;

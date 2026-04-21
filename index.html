@@ -156,7 +156,7 @@ function fetchRemoteData(){
 function pushRemoteData(){
     APP.isSyncing=true;updateSyncIndicator();
     var p = {
-        id: 1, // Ensure primary key is included for upsert
+        id: 1,
         payload: {
             users:APP.users,attendance:APP.attendance,leaves:APP.leaves,announcements:APP.announcements,conveyance:APP.conveyance,
             policies:APP.policies,requests:APP.requests,holidays:APP.holidays,config:APP.config
@@ -164,8 +164,6 @@ function pushRemoteData(){
         updated_at: new Date().toISOString()
     };
 
-    // Use POST with resolution=merge-duplicates to perform an "upsert" via PostgREST.
-    // This ensures row 1 is created if it doesn't exist, or updated if it does.
     var upsertHeaders = Object.assign({}, SB_HEADERS, {
         'Prefer': 'resolution=merge-duplicates,return=minimal'
     });
@@ -176,7 +174,9 @@ function pushRemoteData(){
         body: JSON.stringify(p) 
     })
     .then(function(r){
-        if(!r.ok) return r.json().then(function(err){ throw err; });
+        if(!r.ok) return r.json().then(function(err){ 
+            throw new Error(err.message || "Save failed"); 
+        });
         return true;
     })
     .then(function(ok){
@@ -186,7 +186,7 @@ function pushRemoteData(){
     .catch(function(e){
         console.error("Supabase Save Error:", e);
         APP.isSyncing=false; APP.isOffline=true; updateSyncIndicator();
-        showToast("Save failed: Check RLS policies in Supabase dashboard", "error");
+        showToast("Save failed: Check Supabase table and RLS policies", "error");
         return false;
     });
 }
@@ -1313,15 +1313,7 @@ function getDefaultHolidays(){
 
 /* ===== LIVE UPDATES (SSE) ===== */
 function initSSE(){
-    try{
-        if(typeof EventSource==='undefined')return;
-        var es=new EventSource(API_BASE+'/events');
-        es.addEventListener('open',function(){console.log('SSE connected')});
-        es.addEventListener('error',function(e){console.warn('SSE error',e);es.close();setTimeout(initSSE,5000)});
-        es.addEventListener('update',function(e){
-            try{console.log('Live update received',e.data);fetchRemoteData().then(function(){renderApp();showToast('Live update','info')});}catch(err){console.error(err)}
-        });
-    }catch(e){console.error('SSE init failed',e)}
+    // SSE is disabled for GitHub Pages (requires a running Node.js server)
 }
 
 /* ===== EMPLOYEE PROFILE ===== */
